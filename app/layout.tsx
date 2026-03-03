@@ -19,9 +19,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Nexion - Fullstack Template',
+  title: 'Tempo',
   description:
-    'Nexion is a full-stack Next.js template with auth, database, and type safety. Created by Patrick',
+    'Tempo is a gamified study planner built around a structured Pomodoro system. Users organize their study material into Subjects containing Topics, then launch focused timer sessions on individual topics. Progress is tracked via XP, levels, session history, and a daily streak system.',
 }
 
 export default function RootLayout({
@@ -37,7 +37,6 @@ export default function RootLayout({
         >
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
             enableSystem
             disableTransitionOnChange
           >

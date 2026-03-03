@@ -44,6 +44,20 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-surface: var(--surface);
+  --color-surface-up: var(--surface-up);
+  --color-surface-hi: var(--surface-hi);
+  --color-border-up: var(--border-up);
+  --color-text-sub: var(--text-sub);
+  --color-violet: var(--violet);
+  --color-violet-mid: var(--violet-mid);
+  --color-violet-glow: var(--violet-glow);
+  --color-streak: var(--streak);
+  --color-streak-bg: var(--streak-bg);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-amber: var(--amber);
 }
 
 :root {
@@ -111,5 +125,33 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@keyframes float-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, -20px) scale(1.05);
+  }
+}
+@keyframes float-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-20px, 25px) scale(0.97);
+  }
+}
+@keyframes float-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(15px, 15px);
   }
 }
