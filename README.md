@@ -4,11 +4,11 @@ A gamified study planner built around a structured Pomodoro system, complete wit
 
 ![StudyQuest Dashboard Preview](./public/preview.png) _(UI preview from design system)_
 
-## 📚 Overview
+## Overview
 
 StudyQuest helps students and self-learners organize their materials into **Subjects** and **Topics**, tracking focus sessions with built-in timers. You earn XP for completing study intervals and unlock milestones through consecutive studying days.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
 - **Authentication**: Clerk
@@ -17,18 +17,18 @@ StudyQuest helps students and self-learners organize their materials into **Subj
 - **Styling**: Tailwind CSS 4 + custom brand design system
 - **Deployment**: Vercel (Frontend), Supabase / Railway (Database)
 
-## ⚡️ Core Features
+## Core Features
 
 1. **Subjects & Topics**: Organize your materials cleanly. Reorder via drag & drop. Tracker logs total time, session counts, and your latest rating of confidence on that topic.
 2. **Timer Modes**: Three specific intervals for the perfect workflow:
-   - **Blitz ⚡**: 10m Focus / 2m Break (10 XP)
-   - **Focus 🎯**: 25m Focus / 5m Break (25 XP)
-   - **Deep 🔬**: 50m Focus / 10m Break (50 XP)
+   - **Blitz **: 10m Focus / 2m Break (10 XP)
+   - **Focus **: 25m Focus / 5m Break (25 XP)
+   - **Deep **: 50m Focus / 10m Break (50 XP)
 3. **Gamification & XP**: Accumulate XP per session to level up. XP bar reflects progress to your next threshold.
 4. **Streak System**: Increment streaks based on your _local timezone_. Reach consecutive daily milestone tiers (e.g. 7 days, 14 days) to earn massive bonus XP drops.
 5. **Session History**: Look back on recent efforts with detailed records including topic, time studied, and user rating (1–3 stars).
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -75,7 +75,7 @@ npm run dev
 
 6. Open [http://localhost:3000](http://localhost:3000)
 
-## 🗃️ Database Schema
+## Database Schema
 
 We use Prisma with the following key models:
 
@@ -84,7 +84,7 @@ We use Prisma with the following key models:
 - **`Topic`**: Belongs to a Subject. Tracks study duration statistics.
 - **`Session`**: Historical logs attached to specific `Topics`. Includes mode duration and ratings.
 
-## 🎨 Design System
+## Design System
 
 StudyQuest utilizes a dark-mode only, high-contrast palette meant for deep focus work:
 
@@ -92,6 +92,6 @@ StudyQuest utilizes a dark-mode only, high-contrast palette meant for deep focus
 - **Primary Accent:** Glowing Violet `#7C3AED`
 - **Key Identifiers:** `Geist Mono` standard font, with dynamic XP and Streak badges.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please open an issue or pull request to suggest additions like custom streak goals, weekly charts, or AI topic generation.
