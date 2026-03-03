@@ -1,4 +1,4 @@
-# StudyQuest - Gamified Pomodoro Study Planner
+# Tempo - Gamified Pomodoro Study Planner
 
 A gamified study planner built around a structured Pomodoro system, complete with XP, leveling, daily streaks, and topic-based study tracking.
 
@@ -41,8 +41,8 @@ StudyQuest helps students and self-learners organize their materials into **Subj
 1. Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/beefysalad/pomodoro.git studyquest
-cd studyquest
+git clone https://github.com/beefysalad/pomodoro.git tempo
+cd tempo
 npm install
 ```
 
