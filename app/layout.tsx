@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { QueryProvider } from './providers/query-provider'
 import { ThemeProvider } from './providers/theme-provider'
+import { dark } from '@clerk/themes'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'sonner'
 import { SessionProvider } from 'next-auth/react'
@@ -30,7 +31,42 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: '#7C3AED', // text-violet
+          colorBackground: '#111827', // bg-surface
+          colorInputBackground: '#111827', // bg-surface
+          colorInputText: '#E2E8F0', // text-foreground
+          colorTextOnPrimaryBackground: '#ffffff',
+          colorText: '#E2E8F0', // text-foreground
+          colorTextSecondary: '#94A3B8', // text-text-sub
+          fontFamily: 'var(--font-geist-mono)',
+        },
+        elements: {
+          cardBox: 'shadow-none',
+          card: 'bg-transparent border-none shadow-none',
+          headerTitle: 'text-foreground font-[800] tracking-[-0.03em]',
+          headerSubtitle: 'text-text-sub font-[400]',
+          socialButtonsBlockButton:
+            'bg-surface-up border-border hover:bg-surface-hi transition-all text-foreground font-[600] rounded-[7px]',
+          socialButtonsBlockButtonText: 'font-[600]',
+          dividerLine: 'bg-border',
+          dividerText:
+            'text-muted-foreground font-[600] tracking-[0.1em] uppercase',
+          formFieldLabel:
+            'text-muted-foreground font-[600] tracking-[0.1em] uppercase text-[10px]',
+          formFieldInput:
+            'bg-surface border-border text-foreground rounded-[7px] text-[13px] font-[400] focus:border-violet-mid focus:ring-1 focus:ring-violet-glow',
+          formButtonPrimary:
+            'bg-violet hover:bg-violet/90 border border-violet text-white font-[600] rounded-[7px] shadow-[0_0_16px_var(--color-violet-glow)] transition-all',
+          footerActionText: 'text-text-sub',
+          footerActionLink:
+            'text-violet-mid hover:text-violet transition-colors',
+        },
+      }}
+    >
       <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}

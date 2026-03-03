@@ -20,57 +20,58 @@ model Count {
   modifiedAt DateTime @updatedAt
 }
 
-//needed models based on auth docs from next https://authjs.dev/getting-started/adapters/prisma#configuration
 model User {
-  id             String    @id @default(cuid())
-  name           String?
-  email          String    @unique
-  emailVerified  DateTime?
-  image          String?
-  accounts       Account[]
-  sessions       Session[]
-  hashedPassword String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  clerkUserId   String    @unique
+  email         String    @unique
+  timezone      String    @default("UTC")
+  totalXP       Int       @default(0)
+  streak        Int       @default(0)
+  lastStudiedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subjects Subject[]
+  sessions Session[]
 }
 
-model Account {
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-
+model Subject {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String
+  position  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topics Topic[]
+}
 
-  @@id([provider, providerAccountId])
+model Topic {
+  id           String   @id @default(cuid())
+  subjectId    String
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name         String
+  position     Int      @default(0)
+  totalTime    Int      @default(0) // in seconds
+  sessionCount Int      @default(0)
+  lastRating   Int? // 1-3
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions Session[]
 }
 
 model Session {
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  mode      String // "Blitz" | "Focus" | "Deep"
+  duration  Int // seconds
+  xpEarned  Int
+  rating    Int // 1-3
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
-
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@id([identifier, token])
-}
-
-//needed models based on auth docs from next https://authjs.dev/getting-started/adapters/prisma#configuration
