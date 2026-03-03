@@ -75,6 +75,27 @@ npm run dev
 
 6. Open [http://localhost:3000](http://localhost:3000)
 
+### Local Webhook Setup (ngrok)
+
+Because Clerk needs a public URL to send user events (like sign-ups) to your local database, you must tunnel your localhost to the internet during development.
+
+1. Ensure your local server is running (`npm run dev`).
+2. Open a new terminal and start ngrok:
+   ```bash
+   ngrok http 3000
+   ```
+3. Copy the `Forwarding` URL provided by ngrok (e.g., `https://abc-123.ngrok-free.app`).
+   _Note: ngrok URLs change every time you restart ngrok. You only need to update the endpoint URL in Clerk when you restart the ngrok terminal process._
+4. Go to your [Clerk Dashboard](https://dashboard.clerk.com) > **Webhooks**.
+5. Click **Add Endpoint** (or edit your existing local endpoint).
+6. Paste your ngrok URL and append the webhook API route: `https://abc-123.ngrok-free.app/api/webhooks/clerk`
+7. Ensure the `user.created`, `user.updated`, and `user.deleted` events are checked.
+8. Save, then copy the **Signing Secret** from the bottom right corner of the dashboard page.
+9. Add the secret to your `.env.local` file:
+   ```bash
+   CLERK_WEBHOOK_SECRET=whsec_...
+   ```
+
 ## Database Schema
 
 We use Prisma with the following key models:
