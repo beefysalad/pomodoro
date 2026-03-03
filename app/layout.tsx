@@ -6,7 +6,6 @@ import { ThemeProvider } from './providers/theme-provider'
 import { dark } from '@clerk/themes'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'sonner'
-import { SessionProvider } from 'next-auth/react'
 import { Analytics } from '@vercel/analytics/next'
 
 const geistSans = Geist({
@@ -76,13 +75,11 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <SessionProvider>
-              <QueryProvider>
-                {children}
-                <Toaster richColors position="bottom-center" />
-              </QueryProvider>
-              <Analytics />
-            </SessionProvider>
+            <QueryProvider>
+              {children}
+              <Toaster richColors position="bottom-center" />
+            </QueryProvider>
+            <Analytics />
           </ThemeProvider>
         </body>
       </html>
