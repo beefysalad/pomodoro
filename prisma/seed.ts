@@ -15,23 +15,6 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('🌱 Seeding database...')
-  const hashedPassword = await bcrypt.hash('123456', 10)
-  const findUser = await prisma.user.findUnique({
-    where: {
-      email: 'test@test.com',
-    },
-  })
-  if (findUser) {
-    console.log('User already exists')
-    return
-  }
-  await prisma.user.create({
-    data: {
-      email: 'test@test.com',
-      hashedPassword: hashedPassword,
-      name: 'Test account',
-    },
-  })
 }
 
 main()
