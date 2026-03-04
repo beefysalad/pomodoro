@@ -34,13 +34,13 @@ export default function RootLayout({
       appearance={{
         baseTheme: dark,
         variables: {
-          colorPrimary: '#7C3AED', // text-violet
-          colorBackground: '#111827', // bg-surface
-          colorInputBackground: '#111827', // bg-surface
-          colorInputText: '#E2E8F0', // text-foreground
+          colorPrimary: '#7C3AED',
+          colorBackground: '#111827',
+          colorInputBackground: '#111827',
+          colorInputText: '#E2E8F0',
           colorTextOnPrimaryBackground: '#ffffff',
-          colorText: '#E2E8F0', // text-foreground
-          colorTextSecondary: '#94A3B8', // text-text-sub
+          colorText: '#E2E8F0',
+          colorTextSecondary: '#94A3B8',
           fontFamily: 'var(--font-geist-mono)',
         },
         elements: {
