@@ -40,9 +40,6 @@ export default function LandingComponent() {
         <div className="relative mx-auto max-w-[1120px] px-6 text-center">
           <div className="mb-7 inline-flex">
             <span className="border-violet/25 bg-violet/[0.08] text-violet-mid flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-[700] tracking-[0.18em] uppercase">
-              <span className="from-violet to-violet-mid flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br text-[8px]">
-                ✦
-              </span>
               Now with Deep Focus Mode
             </span>
           </div>
