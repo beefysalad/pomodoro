@@ -1,5 +1,18 @@
-import type { Topic } from '@/app/generated/prisma/client'
+import type { Topic, Subject } from '@/app/generated/prisma/client'
 import api from '../axios'
+
+export interface SubjectWithTopics extends Subject {
+  topics: Topic[]
+}
+
+export const getTopics = async (
+  subjectId: string
+): Promise<SubjectWithTopics> => {
+  const { data } = await api.get<{ subject: SubjectWithTopics }>(
+    `/subjects/${subjectId}/topics`
+  )
+  return data.subject
+}
 
 export const createTopic = async (
   subjectId: string,

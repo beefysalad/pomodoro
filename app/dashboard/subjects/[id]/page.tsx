@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 
 import { UserButton } from '@clerk/nextjs'
-import { NewSubjectForm } from '@/components/dashboard/new-subject-form'
+import { SubjectDetailPage } from '@/components/dashboard/subject-detail-page'
 
-export default async function NewSubjectPage() {
+export default async function SubjectPage() {
   return (
     <div className="bg-background flex min-h-screen flex-col">
       {/* Header */}
@@ -23,10 +23,8 @@ export default async function NewSubjectPage() {
         </div>
       </div>
 
-      {/* Full-height form area */}
-      <div className="relative flex flex-1 overflow-hidden">
-        <NewSubjectForm />
-      </div>
+      {/* Client shell handles sidebar + content */}
+      <SubjectDetailPage />
     </div>
   )
 }

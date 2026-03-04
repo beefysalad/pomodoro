@@ -5,9 +5,43 @@ import { z } from 'zod'
 
 const CreateTopicSchema = z.object({
   name: z.string().min(1),
-  // Optionally support descriptions/tags if we add them to the Prisma schema later.
-  // The Prisma schema currently only has name, position, totalTime, sessionCount, lastRating
 })
+
+export const GET = withAuth(
+  async (req: NextRequest, { user, params }: AuthContext) => {
+    try {
+      const subjectId = params?.id
+      if (!subjectId) {
+        return NextResponse.json(
+          { error: 'Subject ID is required' },
+          { status: 400 }
+        )
+      }
+
+      const subject = await prisma.subject.findUnique({
+        where: { id: subjectId },
+        include: {
+          topics: { orderBy: { position: 'asc' } },
+        },
+      })
+
+      if (!subject || subject.userId !== user.id) {
+        return NextResponse.json(
+          { error: 'Subject not found or unauthorized' },
+          { status: 403 }
+        )
+      }
+
+      return NextResponse.json({ subject, topics: subject.topics })
+    } catch (error) {
+      console.error('Subject fetch error:', error)
+      return NextResponse.json(
+        { error: 'Internal Server Error' },
+        { status: 500 }
+      )
+    }
+  }
+)
 
 export const POST = withAuth(
   async (req: NextRequest, { user, params }: AuthContext) => {

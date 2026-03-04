@@ -1,16 +1,13 @@
 export const dynamic = 'force-dynamic'
 
 import { UserButton } from '@clerk/nextjs'
-import { currentUser } from '@clerk/nextjs/server'
 import { Dashboard } from '@/components/dashboard'
 
 export default async function DashboardPage() {
-  const user = await currentUser()
-
   return (
-    <div className="bg-background min-h-screen flex flex-col">
+    <div className="bg-background flex min-h-screen flex-col">
       {/* Header */}
-      <div className="border-border border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+      <div className="border-border bg-background/80 sticky top-0 z-50 border-b backdrop-blur-md">
         <div className="flex items-center justify-between px-6 py-4">
           <span className="text-foreground text-[18px] font-[800] tracking-[-0.03em]">
             Tempo

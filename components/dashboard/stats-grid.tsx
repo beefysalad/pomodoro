@@ -59,7 +59,7 @@ export function StatsGrid() {
   return (
     <div className="flex flex-col gap-4">
       <motion.div
-        className="grid grid-cols-3 gap-3"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3"
         variants={containerVariants}
         initial="hidden"
         animate="visible"

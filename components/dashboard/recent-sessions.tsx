@@ -129,24 +129,24 @@ export function RecentSessions() {
             </div>
 
             {/* Right side - Stats */}
-            <div className="ml-4 flex items-center gap-5">
-              {/* Duration */}
-              <motion.div className="text-right" whileHover={{ scale: 1.05 }}>
+            <div className="ml-3 flex items-center gap-2 sm:ml-4 sm:gap-5">
+              {/* Duration - hidden on very small */}
+              <div className="xs:block hidden text-right sm:block">
                 <p className="text-text-sub flex items-center gap-1 text-[11px] font-[700] text-nowrap">
                   <Clock className="h-3 w-3 opacity-60" />
                   {session.duration}
                 </p>
-              </motion.div>
+              </div>
 
               {/* XP */}
-              <motion.div className="text-right" whileHover={{ scale: 1.05 }}>
+              <div className="text-right">
                 <p className="text-amber flex items-center gap-1 text-[11px] font-[700] text-nowrap">
                   <Zap className="h-3 w-3" />+{session.xp}
                 </p>
-              </motion.div>
+              </div>
 
               {/* Rating */}
-              <motion.div className="flex gap-0.5 text-right">
+              <div className="flex gap-0.5 text-right">
                 {Array(3)
                   .fill(0)
                   .map((_, i) => (
@@ -162,7 +162,7 @@ export function RecentSessions() {
                       )}
                     </motion.div>
                   ))}
-              </motion.div>
+              </div>
             </div>
           </motion.div>
         ))}

@@ -41,11 +41,12 @@ export default function RootLayout({
           colorTextOnPrimaryBackground: '#ffffff',
           colorText: '#E2E8F0',
           colorTextSecondary: '#94A3B8',
-          fontFamily: 'var(--font-geist-mono)',
         },
         elements: {
-          cardBox: 'shadow-none',
-          card: 'bg-transparent border-none shadow-none',
+          modalContainer: 'flex items-center justify-center',
+          modalBackdrop: 'backdrop-blur-md bg-black/40',
+          cardBox: 'shadow-2xl rounded-2xl',
+          card: 'bg-[#121216] border border-white/5 shadow-none rounded-2xl',
           headerTitle: 'text-foreground font-[800] tracking-[-0.03em]',
           headerSubtitle: 'text-text-sub font-[400]',
           socialButtonsBlockButton:
