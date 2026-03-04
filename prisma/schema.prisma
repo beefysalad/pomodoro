@@ -22,6 +22,8 @@ model Count {
 
 model User {
   id            String    @id @default(cuid())
+  firstName     String?
+  lastName      String?
   clerkUserId   String    @unique
   email         String    @unique
   timezone      String    @default("UTC")
