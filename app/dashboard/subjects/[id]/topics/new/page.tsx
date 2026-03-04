@@ -1,230 +1,43 @@
-'use client'
+export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, Sparkles, BookOpen, Plus, X } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { UserButton } from '@clerk/nextjs'
+import { currentUser } from '@clerk/nextjs/server'
+import { NewTopicForm } from '@/components/dashboard/new-topic-form'
 
-export default function NewTopicPage() {
-  const router = useRouter()
-  const params = useParams()
-  const subjectId = params.id as string
-
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [inputTag, setInputTag] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const handleAddTag = () => {
-    if (inputTag.trim() && !tags.includes(inputTag.trim())) {
-      setTags([...tags, inputTag.trim()])
-      setInputTag('')
-    }
-  }
-
-  const handleRemoveTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag))
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    // TODO: Wire up to actual API
-    await new Promise(resolve => setTimeout(resolve, 800))
-    router.push('/dashboard')
-  }
+export default async function NewTopicPage() {
+  const user = await currentUser()
 
   return (
     <div className="bg-background min-h-screen flex flex-col">
       {/* Header */}
       <div className="border-border border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
         <div className="flex items-center justify-between px-6 py-4">
-          <motion.button
-            onClick={() => router.back()}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            whileHover={{ x: -4 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </motion.button>
           <span className="text-foreground text-[18px] font-[800] tracking-[-0.03em]">
             Tempo
           </span>
-          <div className="w-5" />
+
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox:
+                  'w-10 h-10 border-2 border-surface-up shadow-[0_0_14px_var(--color-violet-glow)]',
+              },
+            }}
+          />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <motion.div 
-          className="w-full max-w-2xl"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
-          {/* Hero Section */}
-          <div className="mb-12 text-center">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1, type: 'spring', stiffness: 300 }}
-              className="flex items-center justify-center gap-2 mb-4"
-            >
-              <BookOpen className="w-6 h-6 text-violet-mid" />
-              <h1 className="text-foreground text-4xl font-[800] tracking-[-0.03em]">
-                New Topic
-              </h1>
-            </motion.div>
-            <motion.p 
-              className="text-muted-foreground/60 text-[14px] font-[500]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              Create a topic to organize your study sessions within this subject
-            </motion.p>
+      {/* Main Content with Sidebar */}
+      <div className="flex-1 overflow-hidden p-6">
+        <div className="grid grid-cols-[200px_1fr] gap-6 h-full">
+          {/* Sidebar Placeholder */}
+          <div />
+
+          {/* Form Content */}
+          <div className="flex flex-col">
+            <NewTopicForm />
           </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Title Input */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="relative"
-            >
-              <label className="block text-foreground text-[12px] font-[700] tracking-[0.04em] uppercase mb-3">
-                Topic Title
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Integration by Parts"
-                className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-violet-mid focus:ring-1 focus:ring-violet-mid/30 transition-all text-[14px]"
-              />
-            </motion.div>
-
-            {/* Description Input */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-            >
-              <label className="block text-foreground text-[12px] font-[700] tracking-[0.04em] uppercase mb-3">
-                Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add some context about this topic..."
-                rows={4}
-                className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-violet-mid focus:ring-1 focus:ring-violet-mid/30 transition-all text-[14px] resize-none"
-              />
-            </motion.div>
-
-            {/* Tags Input */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <label className="block text-foreground text-[12px] font-[700] tracking-[0.04em] uppercase mb-3">
-                Tags
-              </label>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={inputTag}
-                  onChange={(e) => setInputTag(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                  placeholder="Add a tag and press Enter"
-                  className="flex-1 bg-surface border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-violet-mid focus:ring-1 focus:ring-violet-mid/30 transition-all text-[14px]"
-                />
-                <motion.button
-                  type="button"
-                  onClick={handleAddTag}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-violet border border-violet rounded-xl px-4 py-3 text-white font-[700] text-[12px] shadow-[0_0_12px_var(--color-violet-glow)] hover:shadow-[0_0_20px_var(--color-violet-glow)] transition-all flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                </motion.button>
-              </div>
-
-              {/* Tags Display */}
-              {tags.length > 0 && (
-                <motion.div 
-                  className="flex flex-wrap gap-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  {tags.map((tag, idx) => (
-                    <motion.div
-                      key={tag}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="flex items-center gap-2 bg-violet/10 border border-violet/20 rounded-xl px-3 py-1.5 text-[12px] font-[600] text-violet-mid"
-                    >
-                      {tag}
-                      <motion.button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        whileHover={{ scale: 1.2 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <X className="w-3 h-3" />
-                      </motion.button>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </motion.div>
-
-            {/* Action Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex gap-3 pt-4"
-            >
-              <motion.button
-                type="button"
-                onClick={() => router.back()}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex-1 border border-border rounded-xl px-6 py-3 text-[12px] font-[700] text-muted-foreground hover:text-foreground hover:border-border-up transition-all"
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                type="submit"
-                disabled={!title.trim() || isSubmitting}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex-1 bg-violet border border-violet rounded-xl px-6 py-3 text-[12px] font-[700] text-white shadow-[0_0_20px_var(--color-violet-glow)] hover:shadow-[0_0_30px_var(--color-violet-glow)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </motion.div>
-                    Creating...
-                  </>
-                ) : (
-                  'Create Topic'
-                )}
-              </motion.button>
-            </motion.div>
-          </form>
-        </motion.div>
+        </div>
       </div>
     </div>
   )
