@@ -1,18 +1,17 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Zap, Beaker, History, ArrowLeft, Sparkles } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { ArrowLeft, Sparkles } from 'lucide-react'
+import { motion, Variants } from 'framer-motion'
+import { useCreateSubject } from '@/hooks/use-subjects'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  CreateSubjectSchemaApi,
+  TCreateSubjectSchemaApi,
+} from '@/lib/schemas/subject'
 
-const SUBJECT_ICONS = [
-  { id: 'math', name: 'Mathematics', icon: <BookOpen className="w-6 h-6" /> },
-  { id: 'physics', name: 'Physics', icon: <Zap className="w-6 h-6" /> },
-  { id: 'chemistry', name: 'Chemistry', icon: <Beaker className="w-6 h-6" /> },
-  { id: 'history', name: 'History', icon: <History className="w-6 h-6" /> },
-]
-
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -23,7 +22,7 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -34,16 +33,26 @@ const itemVariants = {
 
 export function NewSubjectForm() {
   const router = useRouter()
-  const [name, setName] = useState('')
-  const [selectedIcon, setSelectedIcon] = useState('math')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { mutateAsync: createSubject } = useCreateSubject()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    // TODO: Wire up to actual API
-    await new Promise(resolve => setTimeout(resolve, 800))
-    router.push('/dashboard')
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<TCreateSubjectSchemaApi>({
+    resolver: zodResolver(CreateSubjectSchemaApi),
+    defaultValues: {
+      name: '',
+    },
+  })
+
+  const onSubmit = async (data: TCreateSubjectSchemaApi) => {
+    try {
+      await createSubject(data)
+      router.push('/dashboard')
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   return (
@@ -54,71 +63,45 @@ export function NewSubjectForm() {
       animate="visible"
     >
       {/* Header Section */}
-      <motion.div variants={itemVariants} className="pb-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-2">
+      <motion.div
+        variants={itemVariants}
+        className="border-border border-b pb-4"
+      >
+        <div className="mb-2 flex items-center gap-2">
           <motion.button
             onClick={() => router.back()}
             className="text-muted-foreground hover:text-foreground transition-colors"
             whileHover={{ x: -4 }}
             whileTap={{ scale: 0.95 }}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="h-4 w-4" />
           </motion.button>
         </div>
         <h1 className="text-foreground text-[28px] font-[800] tracking-[-0.03em]">
           Create Subject
         </h1>
-        <p className="text-muted-foreground/60 text-[13px] font-[500] mt-2">
+        <p className="text-muted-foreground/60 mt-2 text-[13px] font-[500]">
           Add a new subject to organize your study sessions
         </p>
       </motion.div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* Name Input */}
         <motion.div variants={itemVariants} className="space-y-3">
-          <label className="block text-foreground text-[12px] font-[700] tracking-[0.04em] uppercase">
+          <label className="text-foreground block text-[12px] font-[700] tracking-[0.04em] uppercase">
             Subject Name
           </label>
           <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            {...register('name')}
             placeholder="e.g., Advanced Calculus"
-            className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-violet-mid focus:ring-1 focus:ring-violet-mid/30 transition-all text-[14px]"
+            className="bg-surface border-border text-foreground placeholder:text-muted-foreground/40 focus:border-violet-mid focus:ring-violet-mid/30 w-full rounded-xl border px-4 py-3 text-[14px] transition-all focus:ring-1 focus:outline-none"
           />
-        </motion.div>
-
-        {/* Icon Selection */}
-        <motion.div variants={itemVariants} className="space-y-4">
-          <label className="block text-foreground text-[12px] font-[700] tracking-[0.04em] uppercase">
-            Icon
-          </label>
-          <motion.div 
-            className="grid grid-cols-4 gap-3"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {SUBJECT_ICONS.map((icon) => (
-              <motion.button
-                key={icon.id}
-                type="button"
-                onClick={() => setSelectedIcon(icon.id)}
-                variants={itemVariants}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${
-                  selectedIcon === icon.id
-                    ? 'border-violet-mid bg-violet/10 text-violet-mid shadow-[0_0_12px_rgba(124,58,237,0.3)]'
-                    : 'border-border bg-surface hover:border-border-up text-muted-foreground'
-                }`}
-              >
-                {icon.icon}
-                <span className="text-[10px] font-[600] text-center">{icon.name}</span>
-              </motion.button>
-            ))}
-          </motion.div>
+          {errors.name && (
+            <p className="text-[11px] font-[600] text-red-500">
+              {errors.name.message}
+            </p>
+          )}
         </motion.div>
 
         {/* Action Buttons */}
@@ -128,16 +111,16 @@ export function NewSubjectForm() {
             onClick={() => router.back()}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex-1 border border-border rounded-xl px-6 py-3 text-[12px] font-[700] text-muted-foreground hover:text-foreground hover:border-border-up transition-all"
+            className="border-border text-muted-foreground hover:text-foreground hover:border-border-up flex-1 rounded-xl border px-6 py-3 text-[12px] font-[700] transition-all"
           >
             Cancel
           </motion.button>
           <motion.button
             type="submit"
-            disabled={!name.trim() || isSubmitting}
+            disabled={isSubmitting}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex-1 bg-violet border border-violet rounded-xl px-6 py-3 text-[12px] font-[700] text-white shadow-[0_0_20px_var(--color-violet-glow)] hover:shadow-[0_0_30px_var(--color-violet-glow)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="bg-violet border-violet flex flex-1 items-center justify-center gap-2 rounded-xl border px-6 py-3 text-[12px] font-[700] text-white shadow-[0_0_20px_var(--color-violet-glow)] transition-all hover:shadow-[0_0_30px_var(--color-violet-glow)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? (
               <>
@@ -145,7 +128,7 @@ export function NewSubjectForm() {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="h-4 w-4" />
                 </motion.div>
                 Creating...
               </>

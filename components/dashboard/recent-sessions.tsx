@@ -1,7 +1,7 @@
 'use client'
 
 import { Star, Clock, Zap, BookOpen } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, Variants } from 'framer-motion'
 
 interface Session {
   id: string
@@ -19,7 +19,7 @@ const RECENT_SESSIONS: Session[] = [
     id: '1',
     subject: 'Mathematics',
     topic: 'Calculus - Integrals',
-    icon: <BookOpen className="w-4 h-4" />,
+    icon: <BookOpen className="h-4 w-4" />,
     duration: '25m',
     xp: 25,
     rating: 3,
@@ -29,7 +29,7 @@ const RECENT_SESSIONS: Session[] = [
     id: '2',
     subject: 'Physics',
     topic: 'Quantum Mechanics',
-    icon: <Zap className="w-4 h-4" />,
+    icon: <Zap className="h-4 w-4" />,
     duration: '50m',
     xp: 50,
     rating: 2,
@@ -39,7 +39,7 @@ const RECENT_SESSIONS: Session[] = [
     id: '3',
     subject: 'Chemistry',
     topic: 'Organic Reactions',
-    icon: <BookOpen className="w-4 h-4" />,
+    icon: <BookOpen className="h-4 w-4" />,
     duration: '25m',
     xp: 25,
     rating: 3,
@@ -49,7 +49,7 @@ const RECENT_SESSIONS: Session[] = [
     id: '4',
     subject: 'History',
     topic: 'World War II',
-    icon: <BookOpen className="w-4 h-4" />,
+    icon: <BookOpen className="h-4 w-4" />,
     duration: '10m',
     xp: 10,
     rating: 2,
@@ -57,7 +57,7 @@ const RECENT_SESSIONS: Session[] = [
   },
 ]
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -68,7 +68,7 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, x: -10 },
   visible: {
     opacity: 1,
@@ -79,25 +79,25 @@ const itemVariants = {
 
 export function RecentSessions() {
   return (
-    <motion.div 
+    <motion.div
       className="border-border bg-surface rounded-2xl border p-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.6, type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-foreground text-[14px] font-[700] tracking-[-0.02em]">
           Recent Sessions
         </h2>
-        <motion.button 
-          className="text-violet-mid text-[11px] font-[700] hover:text-violet transition-colors"
+        <motion.button
+          className="text-violet-mid hover:text-violet text-[11px] font-[700] transition-colors"
           whileHover={{ x: 2 }}
         >
           View all →
         </motion.button>
       </div>
 
-      <motion.div 
+      <motion.div
         className="space-y-2"
         variants={containerVariants}
         initial="hidden"
@@ -108,52 +108,45 @@ export function RecentSessions() {
             key={session.id}
             variants={itemVariants}
             whileHover={{ x: 4, backgroundColor: 'var(--color-surface-up)' }}
-            className="flex items-center justify-between p-3.5 rounded-xl bg-surface-up/50 transition-all cursor-pointer group"
+            className="bg-surface-up/50 group flex cursor-pointer items-center justify-between rounded-xl p-3.5 transition-all"
           >
             {/* Left side - Session info */}
-            <div className="flex items-center gap-3.5 flex-1 min-w-0">
-              <motion.div 
-                className="w-8 h-8 rounded-lg bg-violet/10 flex items-center justify-center flex-shrink-0 text-violet-mid"
+            <div className="flex min-w-0 flex-1 items-center gap-3.5">
+              <motion.div
+                className="bg-violet/10 text-violet-mid flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
                 whileHover={{ scale: 1.1, rotate: 5 }}
               >
                 {session.icon}
               </motion.div>
-              <div className="flex-1 min-w-0">
-                <p className="text-foreground text-[12px] font-[600] truncate">
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground truncate text-[12px] font-[600]">
                   {session.topic}
                 </p>
-                <p className="text-muted-foreground/60 text-[10px] truncate">
+                <p className="text-muted-foreground/60 truncate text-[10px]">
                   {session.date}
                 </p>
               </div>
             </div>
 
             {/* Right side - Stats */}
-            <div className="flex items-center gap-5 ml-4">
+            <div className="ml-4 flex items-center gap-5">
               {/* Duration */}
-              <motion.div 
-                className="text-right"
-                whileHover={{ scale: 1.05 }}
-              >
-                <p className="text-text-sub text-[11px] font-[700] text-nowrap flex items-center gap-1">
-                  <Clock className="w-3 h-3 opacity-60" />
+              <motion.div className="text-right" whileHover={{ scale: 1.05 }}>
+                <p className="text-text-sub flex items-center gap-1 text-[11px] font-[700] text-nowrap">
+                  <Clock className="h-3 w-3 opacity-60" />
                   {session.duration}
                 </p>
               </motion.div>
 
               {/* XP */}
-              <motion.div 
-                className="text-right"
-                whileHover={{ scale: 1.05 }}
-              >
-                <p className="text-amber text-[11px] font-[700] text-nowrap flex items-center gap-1">
-                  <Zap className="w-3 h-3" />
-                  +{session.xp}
+              <motion.div className="text-right" whileHover={{ scale: 1.05 }}>
+                <p className="text-amber flex items-center gap-1 text-[11px] font-[700] text-nowrap">
+                  <Zap className="h-3 w-3" />+{session.xp}
                 </p>
               </motion.div>
 
               {/* Rating */}
-              <motion.div className="text-right flex gap-0.5">
+              <motion.div className="flex gap-0.5 text-right">
                 {Array(3)
                   .fill(0)
                   .map((_, i) => (
@@ -163,9 +156,9 @@ export function RecentSessions() {
                       whileTap={{ scale: 0.9 }}
                     >
                       {i < session.rating ? (
-                        <Star className="w-3.5 h-3.5 fill-amber text-amber" />
+                        <Star className="fill-amber text-amber h-3.5 w-3.5" />
                       ) : (
-                        <Star className="w-3.5 h-3.5 text-muted-foreground/30" />
+                        <Star className="text-muted-foreground/30 h-3.5 w-3.5" />
                       )}
                     </motion.div>
                   ))}

@@ -1,12 +1,22 @@
 import { auth } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import prisma from './prisma'
 import { User } from '@/app/generated/prisma/client'
 
-export async function withAuth(
-  handler: (req: Request, user: User) => Promise<NextResponse>
+export interface AuthContext {
+  user: User
+  params: Record<string, string>
+}
+
+export function withAuth(
+  handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>
 ) {
-  return async (req: Request) => {
+  return async (
+    req: NextRequest,
+    context: {
+      params?: Promise<Record<string, string>> | Record<string, string>
+    }
+  ): Promise<NextResponse> => {
     try {
       const { userId: clerkUserId } = await auth()
 
@@ -25,7 +35,17 @@ export async function withAuth(
         )
       }
 
-      return await handler(req, user)
+      const resolvedParams =
+        context?.params instanceof Promise
+          ? await context.params
+          : context?.params || {}
+
+      const authContext: AuthContext = {
+        user,
+        params: resolvedParams,
+      }
+
+      return await handler(req, authContext)
     } catch (error) {
       console.error('Auth helper error:', error)
       return NextResponse.json(
