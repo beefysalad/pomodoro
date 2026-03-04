@@ -198,7 +198,6 @@ export default function DS() {
         style={{ maxWidth: 860, margin: '0 auto', padding: '44px 28px' }}
         className="up"
       >
-        {/* ── COLORS ── */}
         {tab === 'colors' && (
           <div>
             <div style={{ marginBottom: 56 }}>
