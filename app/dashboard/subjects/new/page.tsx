@@ -2,9 +2,9 @@ export const dynamic = 'force-dynamic'
 
 import { UserButton } from '@clerk/nextjs'
 import { currentUser } from '@clerk/nextjs/server'
-import { Dashboard } from '@/components/dashboard'
+import { NewSubjectForm } from '@/components/dashboard/new-subject-form'
 
-export default async function DashboardPage() {
+export default async function NewSubjectPage() {
   const user = await currentUser()
 
   return (
@@ -27,9 +27,17 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content with Sidebar */}
       <div className="flex-1 overflow-hidden p-6">
-        <Dashboard />
+        <div className="grid grid-cols-[200px_1fr] gap-6 h-full">
+          {/* Sidebar Placeholder */}
+          <div />
+
+          {/* Form Content */}
+          <div className="flex flex-col">
+            <NewSubjectForm />
+          </div>
+        </div>
       </div>
     </div>
   )
