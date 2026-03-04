@@ -1,6 +1,7 @@
 'use client'
 
 import { Plus, BookOpen, Zap, Beaker, History } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 
 interface Subject {
@@ -39,6 +40,8 @@ const itemVariants = {
 }
 
 export function Sidebar() {
+  const router = useRouter()
+
   return (
     <div className="flex flex-col gap-6 h-full">
       {/* Subjects Section */}
@@ -48,6 +51,7 @@ export function Sidebar() {
             Subjects
           </p>
           <motion.button 
+            onClick={() => router.push('/dashboard/subjects/new')}
             className="text-muted-foreground/40 hover:text-violet-mid transition-colors"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -77,51 +81,6 @@ export function Sidebar() {
               <span className="truncate">{subject.name}</span>
             </motion.button>
           ))}
-        </motion.div>
-      </div>
-
-      {/* Streak Card */}
-      <div className="mt-auto pt-4">
-        <motion.div 
-          className="border-streak/20 bg-gradient-to-br from-streak/10 to-streak/5 rounded-xl border p-4"
-          whileHover={{ y: -2 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="text-[16px]"
-            >
-              🔥
-            </motion.div>
-            <p className="text-streak text-[10px] font-[700] tracking-[0.08em] uppercase">
-              7-Day Streak
-            </p>
-          </div>
-
-          {/* Streak Dots */}
-          <div className="flex gap-1.5 mb-3">
-            {Array(7)
-              .fill(0)
-              .map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                  className={`flex-1 h-2.5 rounded-full ${
-                    i < 4
-                      ? 'bg-streak shadow-[0_0_8px_rgba(234,88,12,0.6)]'
-                      : 'bg-surface-hi/40'
-                  }`}
-                />
-              ))}
-          </div>
-
-          <p className="text-muted-foreground/60 text-[9px] font-[600] tracking-[0.08em] uppercase">
-            4 consecutive days
-          </p>
         </motion.div>
       </div>
     </div>
