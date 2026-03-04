@@ -28,6 +28,7 @@ jobs:
         run: npx prisma generate && npx next build
         env:
           DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
