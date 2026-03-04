@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import prisma from './prisma' // Adjust this import path based on where your prisma instance is
+import prisma from './prisma'
 import { User } from '@/app/generated/prisma/client'
 
 export async function withAuth(
