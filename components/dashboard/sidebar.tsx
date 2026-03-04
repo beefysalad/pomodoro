@@ -10,14 +10,14 @@ const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.1,
+      staggerChildren: 0.08,
+      delayChildren: 0.15,
     },
   },
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, x: -10 },
+  hidden: { opacity: 0, x: -15 },
   visible: {
     opacity: 1,
     x: 0,
@@ -33,32 +33,40 @@ export function Sidebar() {
   const currentSubjectId = params.id as string
 
   return (
-    <div className="flex h-full flex-col gap-6">
+    <div className="flex h-full flex-col gap-8">
       {/* Subjects Section */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between px-2.5">
-          <p className="text-muted-foreground/40 text-[9px] font-[700] tracking-[0.16em] uppercase">
-            Subjects
-          </p>
+      <div className="flex flex-col gap-4">
+        {/* Header with Title and Add Button */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4.5 w-4.5 text-violet-mid" />
+            <p className="text-foreground text-sm font-semibold">Subjects</p>
+          </div>
           <motion.button
             onClick={() => router.push('/dashboard/subjects/new')}
-            className="text-muted-foreground/40 hover:text-violet-mid transition-colors"
+            className="text-muted-foreground hover:text-violet-mid hover:bg-surface-up transition-all rounded-lg p-1.5"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
+            aria-label="Add new subject"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-4 w-4" />
           </motion.button>
         </div>
 
+        {/* Subjects List */}
         <motion.div
-          className="flex flex-col gap-1.5"
+          className="flex flex-col gap-2"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {isLoading ? (
-            <div className="text-muted-foreground/60 px-3 py-2.5 text-[12px]">
-              Loading...
+            <div className="text-muted-foreground/60 px-4 py-3 text-sm text-center">
+              Loading subjects...
+            </div>
+          ) : subjects.length === 0 ? (
+            <div className="text-muted-foreground/50 px-4 py-3 text-sm text-center">
+              No subjects yet
             </div>
           ) : (
             subjects.map((subject) => {
@@ -70,20 +78,40 @@ export function Sidebar() {
                     router.push(`/dashboard/subjects/${subject.id}`)
                   }
                   variants={itemVariants}
-                  whileHover={{ x: 4 }}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[12px] font-[600] transition-all ${
+                  whileHover={{ x: 6 }}
+                  className={`group relative flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-all ${
                     active
-                      ? 'border-violet/20 bg-violet/10 text-violet-mid border shadow-[0_0_12px_rgba(124,58,237,0.15)]'
-                      : 'text-muted-foreground/60 hover:bg-surface-up hover:text-muted-foreground border border-transparent'
+                      ? 'bg-surface-hi border border-violet/30 shadow-[0_0_16px_rgba(124,58,237,0.2)]'
+                      : 'hover:bg-surface-up border border-transparent hover:border-border-up'
                   }`}
                 >
-                  <span className="flex-shrink-0">
+                  {/* Icon with color indicator */}
+                  <div
+                    className="flex-shrink-0 rounded-md p-1.5 transition-all"
+                    style={{
+                      backgroundColor: `${subject.color}20`,
+                      borderLeft: `3px solid ${subject.color}`,
+                    }}
+                  >
                     <BookOpen
                       className="h-4 w-4"
                       style={{ color: subject.color }}
                     />
+                  </div>
+
+                  {/* Subject Name */}
+                  <span className={`truncate font-medium text-sm transition-colors ${
+                    active
+                      ? 'text-foreground'
+                      : 'text-muted-foreground group-hover:text-foreground'
+                  }`}>
+                    {subject.name}
                   </span>
-                  <span className="truncate">{subject.name}</span>
+
+                  {/* Active Indicator */}
+                  {active && (
+                    <div className="ml-auto h-2 w-2 rounded-full bg-violet-mid" />
+                  )}
                 </motion.button>
               )
             })
