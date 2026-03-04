@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const eventType = evt.type
 
   if (eventType === 'user.created') {
-    const { id: clerkUserId, email_addresses } = evt.data
+    const { id: clerkUserId, email_addresses, last_name, first_name } = evt.data
     const email = email_addresses[0]?.email_address
 
     if (!clerkUserId || !email) {
@@ -64,6 +64,8 @@ export async function POST(req: Request) {
         data: {
           clerkUserId,
           email,
+          firstName: first_name ?? '',
+          lastName: last_name ?? '',
         },
       })
     } catch (error) {
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
   }
 
   if (eventType === 'user.updated') {
-    const { id: clerkUserId, email_addresses } = evt.data
+    const { id: clerkUserId, email_addresses, last_name, first_name } = evt.data
     const email = email_addresses?.[0]?.email_address
 
     if (!clerkUserId || !email) {
@@ -83,7 +85,7 @@ export async function POST(req: Request) {
     try {
       await prisma.user.update({
         where: { clerkUserId },
-        data: { email },
+        data: { email, firstName: first_name ?? '', lastName: last_name ?? '' },
       })
     } catch (error) {
       console.error('Error updating user in database:', error)
