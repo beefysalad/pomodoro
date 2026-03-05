@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQueries } from '@tanstack/react-query'
 import {
   ArrowRight,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AppHeader } from '@/components/app-header'
+import { ConfirmActionDialog } from '@/components/confirm-action-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,6 +29,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useTimer } from '@/app/providers/timer-provider'
 import {
   useCreateSubject,
   useDeleteSubject,
@@ -43,11 +46,18 @@ function formatDuration(totalSeconds: number) {
 }
 
 export default function SubjectsPage() {
+  const router = useRouter()
+  const timer = useTimer()
   const { data: subjects = [], isLoading } = useSubjects()
   const createSubject = useCreateSubject()
   const deleteSubject = useDeleteSubject()
   const [newSubjectName, setNewSubjectName] = useState('')
   const [isCreateSubjectOpen, setIsCreateSubjectOpen] = useState(false)
+  const [deleteSubjectState, setDeleteSubjectState] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [pageMessage, setPageMessage] = useState('')
 
   const topicQueries = useQueries({
     queries: subjects.map((subject) => ({
@@ -92,17 +102,25 @@ export default function SubjectsPage() {
   }
 
   const onDeleteSubject = async (id: string, name: string) => {
-    const confirmed = window.confirm(
-      `Delete "${name}" and all its topics/sessions? This cannot be undone.`
-    )
-    if (!confirmed) return
-
     try {
       await deleteSubject.mutateAsync(id)
-      toast.success(`Deleted subject: ${name}`)
+      setDeleteSubjectState(null)
+      setPageMessage(`Deleted subject: ${name}`)
     } catch {
-      toast.error('Could not delete subject.')
+      setPageMessage('Could not delete subject.')
     }
+  }
+
+  const onStartPomodoro = (subjectId: string) => {
+    timer.setActiveSubjectId(subjectId)
+    timer.setSelectedTopicId('')
+    timer.setPhase('focus')
+    timer.setRunning(false)
+    timer.setFinished(false)
+    timer.setHasStarted(false)
+    timer.setMoveDonePromptOpen(false)
+    timer.setPendingReview(false)
+    router.push('/dashboard')
   }
 
   return (
@@ -166,6 +184,11 @@ export default function SubjectsPage() {
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {!!pageMessage && (
+            <div className="col-span-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+              {pageMessage}
+            </div>
+          )}
           {isLoading ? (
             <p className="text-sm text-slate-400">Loading subjects...</p>
           ) : !enrichedSubjects.length ? (
@@ -245,8 +268,18 @@ export default function SubjectsPage() {
                     </Button>
                     <Button
                       variant="outline"
+                      className="h-9 border-emerald-400/35 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
+                      onClick={() => onStartPomodoro(subject.id)}
+                      disabled={subject.topicCount === 0}
+                    >
+                      Start
+                    </Button>
+                    <Button
+                      variant="outline"
                       className="h-9 border-red-400/35 bg-red-500/10 text-red-200 hover:bg-red-500/20"
-                      onClick={() => onDeleteSubject(subject.id, subject.name)}
+                      onClick={() =>
+                        setDeleteSubjectState({ id: subject.id, name: subject.name })
+                      }
                       disabled={deleteSubject.isPending}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -258,6 +291,25 @@ export default function SubjectsPage() {
           )}
         </section>
       </div>
+
+      <ConfirmActionDialog
+        open={!!deleteSubjectState}
+        title="Delete subject?"
+        description={
+          deleteSubjectState
+            ? `Delete "${deleteSubjectState.name}" and all its topics/sessions? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete subject"
+        pending={deleteSubject.isPending}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSubjectState(null)
+        }}
+        onConfirm={() => {
+          if (!deleteSubjectState) return
+          void onDeleteSubject(deleteSubjectState.id, deleteSubjectState.name)
+        }}
+      />
     </div>
   )
 }

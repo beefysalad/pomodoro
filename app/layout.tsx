@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { QueryProvider } from './providers/query-provider'
 import { ThemeProvider } from './providers/theme-provider'
+import { TimerProvider } from './providers/timer-provider'
 import { dark } from '@clerk/themes'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'sonner'
@@ -54,28 +55,30 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <QueryProvider>
-              {children}
-              <Toaster
-                position="bottom-center"
-                expand
-                visibleToasts={4}
-                closeButton
-                toastOptions={{
-                  classNames: {
-                    toast: 'tempo-toast',
-                    title: 'tempo-toast-title',
-                    description: 'tempo-toast-description',
-                    actionButton: 'tempo-toast-action',
-                    cancelButton: 'tempo-toast-cancel',
-                    closeButton: 'tempo-toast-close',
-                    success: 'tempo-toast-success',
-                    error: 'tempo-toast-error',
-                    info: 'tempo-toast-info',
-                    warning: 'tempo-toast-warning',
-                    loading: 'tempo-toast-loading',
-                  },
-                }}
-              />
+              <TimerProvider>
+                {children}
+                <Toaster
+                  position="bottom-center"
+                  expand
+                  visibleToasts={4}
+                  closeButton
+                  toastOptions={{
+                    classNames: {
+                      toast: 'tempo-toast',
+                      title: 'tempo-toast-title',
+                      description: 'tempo-toast-description',
+                      actionButton: 'tempo-toast-action',
+                      cancelButton: 'tempo-toast-cancel',
+                      closeButton: 'tempo-toast-close',
+                      success: 'tempo-toast-success',
+                      error: 'tempo-toast-error',
+                      info: 'tempo-toast-info',
+                      warning: 'tempo-toast-warning',
+                      loading: 'tempo-toast-loading',
+                    },
+                  }}
+                />
+              </TimerProvider>
             </QueryProvider>
             <Analytics />
           </ThemeProvider>
