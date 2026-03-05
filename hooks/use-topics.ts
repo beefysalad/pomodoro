@@ -6,7 +6,7 @@ import {
   getTopics,
 } from '@/lib/api/topics'
 import { queryKeys as subjectQueryKeys } from './use-subjects'
-import type { Topic } from '@/lib/api/topics'
+import type { SubjectWithTopics, Topic } from '@/lib/api/topics'
 
 export function useSubjectTopics(subjectId: string) {
   return useQuery({
@@ -49,6 +49,45 @@ export function useUpdateTopic() {
       topicId: string
       payload: Partial<Topic>
     }) => updateTopic(subjectId, topicId, payload),
+    onMutate: async (variables) => {
+      const queryKey = subjectQueryKeys.subject(variables.subjectId)
+      await queryClient.cancelQueries({ queryKey })
+
+      const previousSubject = queryClient.getQueryData<SubjectWithTopics>(queryKey)
+      if (!previousSubject) return { previousSubject }
+
+      const nextSubject: SubjectWithTopics = {
+        ...previousSubject,
+        topics: previousSubject.topics.map((topic) =>
+          topic.id === variables.topicId
+            ? {
+                ...topic,
+                ...variables.payload,
+                statusUpdatedAt:
+                  variables.payload.status !== undefined
+                    ? new Date().toISOString()
+                    : topic.statusUpdatedAt,
+                doneAt:
+                  variables.payload.status === 'DONE'
+                    ? new Date().toISOString()
+                    : variables.payload.status !== undefined
+                      ? null
+                      : topic.doneAt,
+              }
+            : topic
+        ),
+      }
+
+      queryClient.setQueryData(queryKey, nextSubject)
+      return { previousSubject }
+    },
+    onError: (_error, variables, context) => {
+      if (!context?.previousSubject) return
+      queryClient.setQueryData(
+        subjectQueryKeys.subject(variables.subjectId),
+        context.previousSubject
+      )
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: subjectQueryKeys.subjects })
       queryClient.invalidateQueries({
