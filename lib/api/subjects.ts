@@ -1,10 +1,12 @@
-import type { Topic } from '@/app/generated/prisma/client'
+import type { Topic } from './topics'
 import api from '../axios'
 
 export interface Subject {
   id: string
   userId: string
   name: string
+  slug: string | null
+  icon: string | null
   color: string
   position: number
   createdAt: string

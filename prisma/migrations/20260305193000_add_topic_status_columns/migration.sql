@@ -1,0 +1,6 @@
+ALTER TABLE "Topic"
+ADD COLUMN "status" TEXT NOT NULL DEFAULT 'BACKLOG',
+ADD COLUMN "statusUpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN "doneAt" TIMESTAMP(3);
+
+CREATE INDEX "Topic_subjectId_status_idx" ON "Topic"("subjectId", "status");

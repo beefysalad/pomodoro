@@ -21,7 +21,12 @@ export const GET = withAuth(
       const subject = await prisma.subject.findUnique({
         where: { id: subjectId },
         include: {
-          topics: { orderBy: { position: 'asc' } },
+          topics: {
+            orderBy: { position: 'asc' },
+            include: {
+              sessions: { select: { duration: true } },
+            },
+          },
         },
       })
 
@@ -32,7 +37,22 @@ export const GET = withAuth(
         )
       }
 
-      return NextResponse.json({ subject, topics: subject.topics })
+      const topicsWithStats = subject.topics.map((topic) => {
+        const totalDuration = topic.sessions.reduce(
+          (acc, session) => acc + session.duration,
+          0
+        )
+        return {
+          ...topic,
+          _count: { sessions: topic.sessions.length },
+          totalTime: totalDuration,
+        }
+      })
+
+      return NextResponse.json({
+        subject: { ...subject, topics: topicsWithStats },
+        topics: topicsWithStats,
+      })
     } catch (error) {
       console.error('Subject fetch error:', error)
       return NextResponse.json(

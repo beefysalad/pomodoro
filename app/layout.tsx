@@ -42,29 +42,6 @@ export default function RootLayout({
           colorText: '#E2E8F0',
           colorTextSecondary: '#94A3B8',
         },
-        elements: {
-          modalContainer: 'flex items-center justify-center',
-          modalBackdrop: 'backdrop-blur-md bg-black/40',
-          cardBox: 'shadow-2xl rounded-2xl',
-          card: 'bg-[#121216] border border-white/5 shadow-none rounded-2xl',
-          headerTitle: 'text-foreground font-[800] tracking-[-0.03em]',
-          headerSubtitle: 'text-text-sub font-[400]',
-          socialButtonsBlockButton:
-            'bg-surface-up border-border hover:bg-surface-hi transition-all text-foreground font-[600] rounded-[7px]',
-          socialButtonsBlockButtonText: 'font-[600]',
-          dividerLine: 'bg-border',
-          dividerText:
-            'text-muted-foreground font-[600] tracking-[0.1em] uppercase',
-          formFieldLabel:
-            'text-muted-foreground font-[600] tracking-[0.1em] uppercase text-[10px]',
-          formFieldInput:
-            'bg-surface border-border text-foreground rounded-[7px] text-[13px] font-[400] focus:border-violet-mid focus:ring-1 focus:ring-violet-glow',
-          formButtonPrimary:
-            'bg-violet hover:bg-violet/90 border border-violet text-white font-[600] rounded-[7px] shadow-[0_0_16px_var(--color-violet-glow)] transition-all',
-          footerActionText: 'text-text-sub',
-          footerActionLink:
-            'text-violet-mid hover:text-violet transition-colors',
-        },
       }}
     >
       <html lang="en" suppressHydrationWarning>
@@ -78,7 +55,27 @@ export default function RootLayout({
           >
             <QueryProvider>
               {children}
-              <Toaster richColors position="bottom-center" />
+              <Toaster
+                position="bottom-center"
+                expand
+                visibleToasts={4}
+                closeButton
+                toastOptions={{
+                  classNames: {
+                    toast: 'tempo-toast',
+                    title: 'tempo-toast-title',
+                    description: 'tempo-toast-description',
+                    actionButton: 'tempo-toast-action',
+                    cancelButton: 'tempo-toast-cancel',
+                    closeButton: 'tempo-toast-close',
+                    success: 'tempo-toast-success',
+                    error: 'tempo-toast-error',
+                    info: 'tempo-toast-info',
+                    warning: 'tempo-toast-warning',
+                    loading: 'tempo-toast-loading',
+                  },
+                }}
+              />
             </QueryProvider>
             <Analytics />
           </ThemeProvider>

@@ -20,6 +20,15 @@ export const PATCH = withAuth(
             onboarded: parsed.onboarded,
           }),
           ...(parsed.timezone && { timezone: parsed.timezone }),
+          ...(parsed.blitzMinutes !== undefined && {
+            blitzMinutes: parsed.blitzMinutes,
+          }),
+          ...(parsed.focusMinutes !== undefined && {
+            focusMinutes: parsed.focusMinutes,
+          }),
+          ...(parsed.deepMinutes !== undefined && {
+            deepMinutes: parsed.deepMinutes,
+          }),
         },
       })
 

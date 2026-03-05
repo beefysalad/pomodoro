@@ -50,6 +50,9 @@ export const POST = withAuth(
             sessionCount: { increment: 1 },
             totalTime: { increment: Math.round(parsed.duration / 60) }, // store as minutes
             lastRating: parsed.rating,
+            status: 'IN_PROGRESS',
+            statusUpdatedAt: new Date(),
+            doneAt: null,
           },
         }),
         // Award XP and update streak for the user

@@ -127,11 +127,11 @@ export function PublicTimer() {
                       color: cfg.color,
                       boxShadow: `0 0 18px ${cfg.color}30`,
                     }
-                  : { color: 'var(--color-muted-foreground)' }
+                  : { color: 'rgba(226,232,240,0.82)' }
               }
             >
               <span>{cfg.label}</span>
-              <span className="text-[10px] font-[500] opacity-60">
+              <span className="text-[10px] font-[500] opacity-80">
                 {cfg.desc}
               </span>
               {active && (
@@ -150,14 +150,14 @@ export function PublicTimer() {
       {/* Task input */}
       <div className="w-full max-w-sm">
         <div className="relative flex items-center">
-          <Timer className="text-muted-foreground/40 absolute left-4 h-4 w-4" />
+          <Timer className="absolute left-4 h-4 w-4 text-slate-300/70" />
           <input
             type="text"
             placeholder="What are you working on?"
             value={task}
             onChange={(e) => setTask(e.target.value)}
             maxLength={60}
-            className="text-foreground placeholder:text-muted-foreground/40 w-full rounded-xl border border-white/10 bg-white/5 py-3 pr-4 pl-11 text-[14px] backdrop-blur-sm transition-colors focus:border-white/20 focus:ring-0 focus:outline-none"
+            className="w-full rounded-xl border border-white/15 bg-white/8 py-3 pr-4 pl-11 text-[14px] text-slate-100 placeholder:text-slate-400/85 backdrop-blur-sm transition-colors focus:border-white/30 focus:ring-0 focus:outline-none"
           />
         </div>
       </div>
@@ -237,7 +237,7 @@ export function PublicTimer() {
                 >
                   {formatTime(remaining)}
                 </span>
-                <span className="text-muted-foreground/40 text-[11px] font-[600] tracking-widest uppercase">
+                <span className="text-[11px] font-[600] tracking-widest text-slate-300/75 uppercase">
                   remaining
                 </span>
               </motion.div>
@@ -262,9 +262,9 @@ export function PublicTimer() {
           onClick={handleReset}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-colors hover:bg-white/10"
+          className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/8 backdrop-blur-sm transition-colors hover:bg-white/12"
         >
-          <RotateCcw className="text-muted-foreground h-5 w-5" />
+          <RotateCcw className="h-5 w-5 text-slate-200" />
         </motion.button>
 
         {/* Play / Pause */}

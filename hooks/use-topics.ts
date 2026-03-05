@@ -6,7 +6,7 @@ import {
   getTopics,
 } from '@/lib/api/topics'
 import { queryKeys as subjectQueryKeys } from './use-subjects'
-import { Topic } from '@/app/generated/prisma/client'
+import type { Topic } from '@/lib/api/topics'
 
 export function useSubjectTopics(subjectId: string) {
   return useQuery({
