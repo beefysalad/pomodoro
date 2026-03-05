@@ -58,35 +58,67 @@ export default function SubjectDetailPage() {
 
   const [newTopicName, setNewTopicName] = useState('')
   const [draggingTopicId, setDraggingTopicId] = useState('')
+  const [activeDropStatus, setActiveDropStatus] = useState<TopicStatus | null>(null)
+  const [dragPreview, setDragPreview] = useState<{
+    id: string
+    name: string
+    totalTime: number
+    sessions: number
+    x: number
+    y: number
+  } | null>(null)
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false)
+  const transparentDragImage = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    const image = new window.Image()
+    image.src =
+      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+    return image
+  }, [])
 
   const onDragStartTopic = (
     event: React.DragEvent<HTMLDivElement>,
-    topicId: string
+    topic: {
+      id: string
+      name: string
+      totalTime: number
+      _count: { sessions: number }
+    }
   ) => {
-    setDraggingTopicId(topicId)
-
-    // Use a custom ghost image to avoid browser snapshots that can include nearby UI.
-    const source = event.currentTarget
-    const ghost = source.cloneNode(true) as HTMLDivElement
-    ghost.style.position = 'fixed'
-    ghost.style.top = '-1000px'
-    ghost.style.left = '-1000px'
-    ghost.style.width = `${source.offsetWidth}px`
-    ghost.style.pointerEvents = 'none'
-    ghost.style.opacity = '0.92'
-    ghost.style.transform = 'scale(0.98)'
-    ghost.style.boxShadow = '0 16px 40px rgba(0,0,0,0.45)'
-    ghost.style.zIndex = '9999'
-    document.body.appendChild(ghost)
+    setDraggingTopicId(topic.id)
+    setDragPreview({
+      id: topic.id,
+      name: topic.name,
+      totalTime: topic.totalTime,
+      sessions: topic._count.sessions,
+      x: event.clientX,
+      y: event.clientY,
+    })
 
     event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/topic-id', topicId)
-    event.dataTransfer.setDragImage(ghost, source.offsetWidth / 2, 24)
+    event.dataTransfer.setData('text/topic-id', topic.id)
+    if (transparentDragImage) {
+      event.dataTransfer.setDragImage(transparentDragImage, 0, 0)
+    }
+  }
 
-    requestAnimationFrame(() => {
-      if (ghost.parentNode) ghost.parentNode.removeChild(ghost)
-    })
+  const onDragTopic = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingTopicId || event.clientX <= 0 || event.clientY <= 0) return
+    setDragPreview((prev) =>
+      prev
+        ? {
+            ...prev,
+            x: event.clientX,
+            y: event.clientY,
+          }
+        : prev
+    )
+  }
+
+  const clearDragState = () => {
+    setDraggingTopicId('')
+    setActiveDropStatus(null)
+    setDragPreview(null)
   }
 
   const topicStats = useMemo(() => {
@@ -258,13 +290,28 @@ export default function SubjectDetailPage() {
           {TOPIC_STATUSES.map((status) => (
             <div
               key={status}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={async () => {
+              onDragEnter={(event) => {
+                event.preventDefault()
+                if (!draggingTopicId) return
+                setActiveDropStatus(status)
+              }}
+              onDragOver={(event) => {
+                event.preventDefault()
+                event.dataTransfer.dropEffect = 'move'
+                if (!draggingTopicId) return
+                if (activeDropStatus !== status) setActiveDropStatus(status)
+              }}
+              onDrop={async (event) => {
+                event.preventDefault()
                 if (!draggingTopicId) return
                 await moveTopicToStatus(draggingTopicId, status)
-                setDraggingTopicId('')
+                clearDragState()
               }}
-              className="min-h-[320px] rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+              className={`min-h-[320px] rounded-2xl border bg-white/[0.04] p-3 transition ${
+                activeDropStatus === status
+                  ? 'border-cyan-300/50 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]'
+                  : 'border-white/10'
+              }`}
             >
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">
@@ -285,10 +332,11 @@ export default function SubjectDetailPage() {
                     <div
                       key={topic.id}
                       draggable
-                      onDragStart={(event) => onDragStartTopic(event, topic.id)}
-                      onDragEnd={() => setDraggingTopicId('')}
+                      onDragStart={(event) => onDragStartTopic(event, topic)}
+                      onDrag={onDragTopic}
+                      onDragEnd={clearDragState}
                       className={`rounded-xl border border-white/10 bg-[#0d1627]/80 p-3 transition ${
-                        draggingTopicId === topic.id ? 'opacity-45' : 'opacity-100'
+                        draggingTopicId === topic.id ? 'opacity-20' : 'opacity-100'
                       }`}
                     >
                       <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -392,6 +440,25 @@ export default function SubjectDetailPage() {
           </Card>
         </Link>
       </div>
+
+      {dragPreview && (
+        <div
+          className="pointer-events-none fixed z-[120] w-[min(320px,calc(100vw-2rem))] rounded-xl border border-cyan-300/45 bg-[#0d1627]/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
+          style={{
+            left: dragPreview.x + 16,
+            top: dragPreview.y + 16,
+            transform: 'translateZ(0)',
+          }}
+        >
+          <div className="mb-1.5 flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold text-white">{dragPreview.name}</p>
+            <GripVertical className="h-4 w-4 text-cyan-200/90" />
+          </div>
+          <div className="text-xs text-slate-300">
+            {formatDuration(dragPreview.totalTime)} · {dragPreview.sessions} sessions
+          </div>
+        </div>
+      )}
     </div>
   )
 }
