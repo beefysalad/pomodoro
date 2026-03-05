@@ -1,7 +1,20 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createTopic, updateTopic, deleteTopic } from '@/lib/api/topics'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  createTopic,
+  updateTopic,
+  deleteTopic,
+  getTopics,
+} from '@/lib/api/topics'
 import { queryKeys as subjectQueryKeys } from './use-subjects'
-import type { Topic } from '@/app/generated/prisma/client'
+import type { Topic } from '@/lib/api/topics'
+
+export function useSubjectTopics(subjectId: string) {
+  return useQuery({
+    queryKey: subjectQueryKeys.subject(subjectId),
+    queryFn: () => getTopics(subjectId),
+    enabled: !!subjectId,
+  })
+}
 
 export function useCreateTopic() {
   const queryClient = useQueryClient()

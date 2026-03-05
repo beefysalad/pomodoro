@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from './prisma'
 import { User } from '@/app/generated/prisma/client'
@@ -28,11 +28,32 @@ export function withAuth(
         where: { clerkUserId },
       })
 
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found in database' },
-          { status: 404 }
-        )
+      let resolvedUser = user
+      if (!resolvedUser) {
+        const clerkProfile = await currentUser()
+        const email = clerkProfile?.emailAddresses?.[0]?.emailAddress
+
+        if (!email) {
+          return NextResponse.json(
+            { error: 'User email not available from Clerk' },
+            { status: 400 }
+          )
+        }
+
+        resolvedUser = await prisma.user.upsert({
+          where: { clerkUserId },
+          update: {
+            email,
+            firstName: clerkProfile?.firstName ?? null,
+            lastName: clerkProfile?.lastName ?? null,
+          },
+          create: {
+            clerkUserId,
+            email,
+            firstName: clerkProfile?.firstName ?? null,
+            lastName: clerkProfile?.lastName ?? null,
+          },
+        })
       }
 
       const resolvedParams =
@@ -41,7 +62,7 @@ export function withAuth(
           : context?.params || {}
 
       const authContext: AuthContext = {
-        user,
+        user: resolvedUser,
         params: resolvedParams,
       }
 

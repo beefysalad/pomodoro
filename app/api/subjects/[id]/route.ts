@@ -1,17 +1,16 @@
 import prisma from '@/lib/prisma'
 import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-
-const DeleteSchemaApi = z.object({
-  id: z.string(),
-})
-
 export const DELETE = withAuth(
-  async (req: NextRequest, { user }: AuthContext) => {
+  async (req: NextRequest, { user, params }: AuthContext) => {
     try {
-      const body = await req.json()
-      const { id } = DeleteSchemaApi.parse(body)
+      const id = params?.id
+      if (!id) {
+        return NextResponse.json(
+          { error: 'Subject ID is required' },
+          { status: 400 }
+        )
+      }
 
       await prisma.subject.delete({
         where: {

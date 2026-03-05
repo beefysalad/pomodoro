@@ -2,6 +2,7 @@ import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { CreateSubjectSchemaApi, SUBJECT_COLORS } from '@/lib/schemas/subject'
+import { generateUniqueSlug } from '@/lib/helper'
 
 export const GET = withAuth(async (req: NextRequest, { user }: AuthContext) => {
   try {
@@ -34,6 +35,8 @@ export const POST = withAuth(
         select: { position: true },
       })
 
+      const slug = await generateUniqueSlug(parsed.name)
+
       const newPosition = lastSubject ? lastSubject.position + 1 : 0
 
       const subject = await prisma.subject.create({
@@ -42,6 +45,7 @@ export const POST = withAuth(
           userId: user.id,
           color,
           position: newPosition,
+          slug,
         },
       })
 
