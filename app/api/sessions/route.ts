@@ -2,12 +2,12 @@ import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { getLevelFromXp, getNextStreak, MODE_XP } from '@/lib/progression'
 
 const CreateSessionSchema = z.object({
   topicId: z.string().min(1),
   mode: z.enum(['blitz', 'focus', 'deep']),
   duration: z.number().int().positive(), // seconds actually elapsed
-  xpEarned: z.number().int().nonnegative(),
   rating: z.number().int().min(1).max(3),
 })
 
@@ -16,6 +16,17 @@ export const POST = withAuth(
     try {
       const body = await req.json()
       const parsed = CreateSessionSchema.parse(body)
+      const now = new Date()
+      const xpAwarded = MODE_XP[parsed.mode]
+      const previousLevel = getLevelFromXp(user.totalXP)
+      const newTotalXP = user.totalXP + xpAwarded
+      const newLevel = getLevelFromXp(newTotalXP)
+      const nextStreak = getNextStreak({
+        currentStreak: user.streak,
+        lastStudiedAt: user.lastStudiedAt,
+        timezone: user.timezone || 'UTC',
+        now,
+      })
 
       // Verify topic belongs to user
       const topic = await prisma.topic.findUnique({
@@ -37,7 +48,7 @@ export const POST = withAuth(
           topicId: parsed.topicId,
           mode: parsed.mode,
           duration: parsed.duration,
-          xpEarned: parsed.xpEarned,
+          xpEarned: xpAwarded,
           rating: parsed.rating,
         },
       })
@@ -48,10 +59,10 @@ export const POST = withAuth(
           where: { id: parsed.topicId },
           data: {
             sessionCount: { increment: 1 },
-            totalTime: { increment: Math.round(parsed.duration / 60) }, // store as minutes
+            totalTime: { increment: parsed.duration }, // store as seconds
             lastRating: parsed.rating,
             status: 'IN_PROGRESS',
-            statusUpdatedAt: new Date(),
+            statusUpdatedAt: now,
             doneAt: null,
           },
         }),
@@ -59,13 +70,27 @@ export const POST = withAuth(
         prisma.user.update({
           where: { id: user.id },
           data: {
-            totalXP: { increment: parsed.xpEarned },
-            lastStudiedAt: new Date(),
+            totalXP: newTotalXP,
+            streak: nextStreak,
+            lastStudiedAt: now,
           },
         }),
       ])
 
-      return NextResponse.json({ session }, { status: 201 })
+      return NextResponse.json(
+        {
+          session,
+          progression: {
+            xpAwarded,
+            totalXP: newTotalXP,
+            previousLevel,
+            newLevel,
+            leveledUp: newLevel > previousLevel,
+            streak: nextStreak,
+          },
+        },
+        { status: 201 }
+      )
     } catch (error) {
       console.error('Session create error:', error)
       return NextResponse.json(

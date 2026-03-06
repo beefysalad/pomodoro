@@ -10,6 +10,7 @@ import { useUser } from '@/hooks/use-user'
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/stats', label: 'Stats' },
+  { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/subjects', label: 'Subjects' },
   { href: '/settings', label: 'Settings' },
 ]

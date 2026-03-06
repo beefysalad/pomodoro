@@ -10,7 +10,6 @@ import {
   Clock3,
   GripVertical,
   Plus,
-  Sparkles,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'

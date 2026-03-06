@@ -17,12 +17,28 @@ export default function SettingsPage() {
   })
   const [settingsMessage, setSettingsMessage] = useState('')
 
-  const [blitzMinutes, setBlitzMinutes] = useState('10')
-  const [focusMinutes, setFocusMinutes] = useState('25')
-  const [deepMinutes, setDeepMinutes] = useState('50')
+  const [blitzMinutes, setBlitzMinutes] = useState(
+    user?.blitzMinutes?.toString() ?? ''
+  )
+  const [focusMinutes, setFocusMinutes] = useState(
+    user?.focusMinutes?.toString() ?? ''
+  )
+  const [deepMinutes, setDeepMinutes] = useState(
+    user?.deepMinutes?.toString() ?? ''
+  )
+  const [shortBreakMinutes, setShortBreakMinutes] = useState(
+    user?.shortBreakMinutes?.toString() ?? ''
+  )
+  const [longBreakMinutes, setLongBreakMinutes] = useState(
+    user?.longBreakMinutes?.toString() ?? ''
+  )
   const effectiveBlitz = blitzMinutes || String(user?.blitzMinutes ?? 10)
   const effectiveFocus = focusMinutes || String(user?.focusMinutes ?? 25)
   const effectiveDeep = deepMinutes || String(user?.deepMinutes ?? 50)
+  const effectiveShortBreak =
+    shortBreakMinutes || String(user?.shortBreakMinutes ?? 5)
+  const effectiveLongBreak =
+    longBreakMinutes || String(user?.longBreakMinutes ?? 10)
   const isBusy = useMemo(
     () => isLoading || updateUser.isPending || spotifyState.isDisconnecting,
     [isLoading, updateUser.isPending, spotifyState.isDisconnecting]
@@ -58,6 +74,8 @@ export default function SettingsPage() {
     const blitz = Number(effectiveBlitz)
     const focus = Number(effectiveFocus)
     const deep = Number(effectiveDeep)
+    const shortBreak = Number(effectiveShortBreak)
+    const longBreak = Number(effectiveLongBreak)
 
     if (!Number.isFinite(blitz) || blitz < 5 || blitz > 120) {
       setSettingsMessage('Blitz must be between 5 and 120 minutes.')
@@ -71,12 +89,28 @@ export default function SettingsPage() {
       setSettingsMessage('Deep must be between 15 and 240 minutes.')
       return
     }
+    if (!Number.isFinite(shortBreak) || shortBreak < 1 || shortBreak > 30) {
+      setSettingsMessage('Short break must be between 1 and 30 minutes.')
+      return
+    }
+    if (!Number.isFinite(longBreak) || longBreak < 5 || longBreak > 60) {
+      setSettingsMessage('Long break must be between 5 and 60 minutes.')
+      return
+    }
+    if (longBreak < shortBreak) {
+      setSettingsMessage(
+        'Long break should be greater than or equal to short break.'
+      )
+      return
+    }
 
     try {
       await updateUser.mutateAsync({
         blitzMinutes: blitz,
         focusMinutes: focus,
         deepMinutes: deep,
+        shortBreakMinutes: shortBreak,
+        longBreakMinutes: longBreak,
       })
       setSettingsMessage('Timer settings saved.')
     } catch {
@@ -127,7 +161,8 @@ export default function SettingsPage() {
             Timer preferences
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Customize your Blitz, Focus, and Deep durations. Dashboard timers will use these values.
+            Customize Blitz, Focus, Deep, and break durations. Dashboard timers
+            will use these values.
           </p>
         </section>
 
@@ -163,13 +198,33 @@ export default function SettingsPage() {
               />
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SettingField
+                label="Short break"
+                hint="1 to 30 min"
+                value={effectiveShortBreak}
+                onChange={setShortBreakMinutes}
+                disabled={isLoading || updateUser.isPending}
+              />
+              <SettingField
+                label="Long break"
+                hint="5 to 60 min"
+                value={effectiveLongBreak}
+                onChange={setLongBreakMinutes}
+                disabled={isLoading || updateUser.isPending}
+              />
+            </div>
+
             <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-300">
               <span className="inline-flex items-center gap-1.5 font-semibold text-cyan-200">
                 <Timer className="h-3.5 w-3.5" />
                 Current preview
               </span>
               <p className="mt-1">
-                Blitz {effectiveBlitz || '-'}m · Focus {effectiveFocus || '-'}m · Deep {effectiveDeep || '-'}m
+                Blitz {effectiveBlitz || '-'}m · Focus {effectiveFocus || '-'}m
+                · Deep {effectiveDeep || '-'}m · Short break{' '}
+                {effectiveShortBreak || '-'}m · Long break{' '}
+                {effectiveLongBreak || '-'}m
               </p>
             </div>
 
@@ -191,9 +246,12 @@ export default function SettingsPage() {
                 <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">
                   Integrations
                 </p>
-                <h2 className="mt-1 text-xl font-black text-white">Spotify (POC)</h2>
+                <h2 className="mt-1 text-xl font-black text-white">
+                  Spotify (POC)
+                </h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  Boilerplate connect flow for future focus playlists and session audio controls.
+                  Boilerplate connect flow for future focus playlists and
+                  session audio controls.
                 </p>
               </div>
               {spotifyState.connected ? (
@@ -225,7 +283,10 @@ export default function SettingsPage() {
                     : ''}
                 </p>
               ) : (
-                <p>Connect Spotify to prepare for music controls during Pomodoro sessions.</p>
+                <p>
+                  Connect Spotify to prepare for music controls during Pomodoro
+                  sessions.
+                </p>
               )}
             </div>
 
@@ -233,7 +294,9 @@ export default function SettingsPage() {
               <Button
                 type="button"
                 onClick={onSpotifyConnect}
-                disabled={spotifyState.isLoading || spotifyState.isDisconnecting}
+                disabled={
+                  spotifyState.isLoading || spotifyState.isDisconnecting
+                }
                 className="bg-emerald-600 text-white hover:bg-emerald-500"
               >
                 <Link2 className="h-4 w-4" />
@@ -297,7 +360,9 @@ function SettingField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-white">{label} minutes</label>
+      <label className="text-sm font-semibold text-white">
+        {label} minutes
+      </label>
       <Input
         type="number"
         min={1}
