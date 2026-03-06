@@ -73,7 +73,10 @@ export default function StatsPage() {
   const stats = useMemo(() => {
     const subjectSummaries = subjects.map((subject, index) => {
       const topics = topicQueries[index]?.data?.topics ?? []
-      const totalSeconds = topics.reduce((sum, topic) => sum + topic.totalTime, 0)
+      const totalSeconds = topics.reduce(
+        (sum, topic) => sum + topic.totalTime,
+        0
+      )
       const totalSessions = topics.reduce(
         (sum, topic) => sum + topic._count.sessions,
         0
@@ -113,7 +116,10 @@ export default function StatsPage() {
       .slice(0, 8)
       .map((subject) => ({
         id: subject.id,
-        name: subject.name.length > 16 ? `${subject.name.slice(0, 16)}...` : subject.name,
+        name:
+          subject.name.length > 16
+            ? `${subject.name.slice(0, 16)}...`
+            : subject.name,
         timeMinutes: Math.round(subject.totalSeconds / 60),
         sessions: subject.totalSessions,
         topics: subject.topicCount,
@@ -199,12 +205,17 @@ export default function StatsPage() {
             Your full study analytics
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Deep breakdowns across XP, session volume, subject performance, and time distribution.
+            Deep breakdowns across XP, session volume, subject performance, and
+            time distribution.
           </p>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={Zap} label="Total XP" value={String(user?.totalXP ?? 0)} />
+          <StatCard
+            icon={Zap}
+            label="Total XP"
+            value={String(user?.totalXP ?? 0)}
+          />
           <StatCard
             icon={Rocket}
             label="Current Level"
@@ -227,7 +238,9 @@ export default function StatsPage() {
             <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
               <CardContent className="space-y-4 px-4 py-5 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-white">Time + sessions by subject</h2>
+                  <h2 className="text-lg font-bold text-white">
+                    Time + sessions by subject
+                  </h2>
                   <Badge className="bg-violet-500/20 text-violet-200">
                     Top {Math.max(0, stats.subjectChart.length)}
                   </Badge>
@@ -243,7 +256,10 @@ export default function StatsPage() {
                   <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={stats.subjectChart}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(148,163,184,0.2)"
+                        />
                         <XAxis
                           dataKey="name"
                           tick={{ fill: '#94a3b8', fontSize: 12 }}
@@ -296,7 +312,9 @@ export default function StatsPage() {
             <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
               <CardContent className="space-y-4 px-4 py-5 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-white">Subject breakdown</h2>
+                  <h2 className="text-lg font-bold text-white">
+                    Subject breakdown
+                  </h2>
                   <Badge className="bg-cyan-500/20 text-cyan-200">
                     {stats.subjectSummaries.length} subjects
                   </Badge>
@@ -312,16 +330,28 @@ export default function StatsPage() {
                       .sort((a, b) => b.totalSeconds - a.totalSeconds)
                       .map((subject) => {
                         const percentage = stats.totalSeconds
-                          ? Math.round((subject.totalSeconds / stats.totalSeconds) * 100)
+                          ? Math.round(
+                              (subject.totalSeconds / stats.totalSeconds) * 100
+                            )
                           : 0
 
                         return (
-                          <div key={subject.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                          <div
+                            key={subject.id}
+                            className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                          >
                             <div className="mb-1.5 flex items-center justify-between text-sm">
-                              <span className="font-semibold text-white">{subject.name}</span>
-                              <span className="text-slate-300">{formatDuration(subject.totalSeconds)}</span>
+                              <span className="font-semibold text-white">
+                                {subject.name}
+                              </span>
+                              <span className="text-slate-300">
+                                {formatDuration(subject.totalSeconds)}
+                              </span>
                             </div>
-                            <Progress value={Math.max(4, percentage)} className="h-2 bg-white/10" />
+                            <Progress
+                              value={Math.max(4, percentage)}
+                              className="h-2 bg-white/10"
+                            />
                             <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400">
                               <span>{subject.totalSessions} sessions</span>
                               <span>{subject.topicCount} topics</span>
@@ -373,9 +403,14 @@ export default function StatsPage() {
                             borderRadius: '10px',
                             color: '#e2e8f0',
                           }}
-                          formatter={(value: number) => [`${value}m`, 'Time']}
+                          formatter={(value: number | string | undefined) => [
+                            `${value ?? 0}m`,
+                            'Time',
+                          ]}
                         />
-                        <Legend wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }} />
+                        <Legend
+                          wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -387,7 +422,9 @@ export default function StatsPage() {
               <CardContent className="space-y-3 px-4 py-5 sm:px-5">
                 <h2 className="text-base font-bold text-white">Daily quests</h2>
                 {stats.quests.map((quest) => {
-                  const progress = Math.round((quest.current / quest.target) * 100)
+                  const progress = Math.round(
+                    (quest.current / quest.target) * 100
+                  )
                   const done = quest.current >= quest.target
                   return (
                     <div
@@ -397,12 +434,17 @@ export default function StatsPage() {
                       <div className="mb-1.5 flex items-center justify-between text-sm">
                         <span className="text-slate-200">{quest.label}</span>
                         <span
-                          className={done ? 'text-emerald-300' : 'text-slate-400'}
+                          className={
+                            done ? 'text-emerald-300' : 'text-slate-400'
+                          }
                         >
                           {quest.current}/{quest.target}
                         </span>
                       </div>
-                      <Progress value={Math.max(4, progress)} className="h-2 bg-white/10" />
+                      <Progress
+                        value={Math.max(4, progress)}
+                        className="h-2 bg-white/10"
+                      />
                     </div>
                   )
                 })}
@@ -426,7 +468,9 @@ export default function StatsPage() {
                         )}
                         {achievement.title}
                       </span>
-                      <span className="text-slate-400">{achievement.progress}%</span>
+                      <span className="text-slate-400">
+                        {achievement.progress}%
+                      </span>
                     </div>
                     <Progress
                       value={Math.max(4, achievement.progress)}
@@ -439,9 +483,19 @@ export default function StatsPage() {
 
             <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
               <CardContent className="space-y-3 px-4 py-5 sm:px-5">
-                <h2 className="text-base font-bold text-white">Performance snapshot</h2>
-                <SnapshotRow label="Current streak" value={`${user?.streak ?? 0} days`} icon={Flame} />
-                <SnapshotRow label="Tracked topics" value={String(stats.topicCount)} icon={BarChart3} />
+                <h2 className="text-base font-bold text-white">
+                  Performance snapshot
+                </h2>
+                <SnapshotRow
+                  label="Current streak"
+                  value={`${user?.streak ?? 0} days`}
+                  icon={Flame}
+                />
+                <SnapshotRow
+                  label="Tracked topics"
+                  value={String(stats.topicCount)}
+                  icon={BarChart3}
+                />
                 <SnapshotRow
                   label="Avg session"
                   value={formatDuration(stats.avgSessionSeconds)}
@@ -455,9 +509,12 @@ export default function StatsPage() {
                 <h2 className="text-base font-bold text-white">Top subject</h2>
                 {stats.topSubject ? (
                   <>
-                    <p className="text-lg font-extrabold text-white">{stats.topSubject.name}</p>
+                    <p className="text-lg font-extrabold text-white">
+                      {stats.topSubject.name}
+                    </p>
                     <p className="text-sm text-slate-300">
-                      {formatDuration(stats.topSubject.totalSeconds)} across {stats.topSubject.totalSessions} sessions.
+                      {formatDuration(stats.topSubject.totalSeconds)} across{' '}
+                      {stats.topSubject.totalSessions} sessions.
                     </p>
                   </>
                 ) : (
