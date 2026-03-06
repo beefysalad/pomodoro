@@ -46,6 +46,7 @@ export default function OnboardingPage() {
   const [newSubjectName, setNewSubjectName] = useState('')
   const [newTopicName, setNewTopicName] = useState('')
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
+  const [flowMessage, setFlowMessage] = useState('')
 
   useEffect(() => {
     if (!userLoading && user?.onboarded) {
@@ -117,34 +118,36 @@ export default function OnboardingPage() {
 
   const onNext = () => {
     if (step === 1 && !setup.hasSubject) {
-      toast.error('Create your first subject to continue.')
+      setFlowMessage('Create your first subject to continue.')
       return
     }
 
     if (step === 2 && !setup.hasTopic) {
-      toast.error('Add your first topic to continue.')
+      setFlowMessage('Add your first topic to continue.')
       return
     }
 
+    setFlowMessage('')
     setStep((prev) => Math.min(STEP_TITLES.length - 1, prev + 1))
   }
 
   const onBack = () => {
+    setFlowMessage('')
     setStep((prev) => Math.max(0, prev - 1))
   }
 
   const onFinishOnboarding = async () => {
     if (!setup.hasSubject || !setup.hasTopic) {
-      toast.error('Complete setup first.')
+      setFlowMessage('Complete setup first.')
       return
     }
 
     try {
       await updateUser.mutateAsync({ onboarded: true })
-      toast.success('Setup complete. Welcome to Tempo.')
+      setFlowMessage('Setup complete. Redirecting to your dashboard...')
       router.push('/dashboard')
     } catch {
-      toast.error('Unable to complete onboarding right now.')
+      setFlowMessage('Unable to complete onboarding right now.')
     }
   }
 
@@ -182,6 +185,11 @@ export default function OnboardingPage() {
 
         <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center">
           <div className="space-y-5 p-2 sm:p-4">
+            {!!flowMessage && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+                {flowMessage}
+              </div>
+            )}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-300">

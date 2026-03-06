@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -14,6 +15,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AppHeader } from '@/components/app-header'
+import { useTimer } from '@/app/providers/timer-provider'
+import { ConfirmActionDialog } from '@/components/confirm-action-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -49,6 +52,8 @@ function formatDuration(totalSeconds: number) {
 }
 
 export default function SubjectDetailPage() {
+  const router = useRouter()
+  const timer = useTimer()
   const params = useParams<{ id: string }>()
   const subjectId = params.id
   const { data: subject, isLoading } = useSubjectTopics(subjectId)
@@ -58,7 +63,9 @@ export default function SubjectDetailPage() {
 
   const [newTopicName, setNewTopicName] = useState('')
   const [draggingTopicId, setDraggingTopicId] = useState('')
-  const [activeDropStatus, setActiveDropStatus] = useState<TopicStatus | null>(null)
+  const [activeDropStatus, setActiveDropStatus] = useState<TopicStatus | null>(
+    null
+  )
   const [dragPreview, setDragPreview] = useState<{
     id: string
     name: string
@@ -68,6 +75,11 @@ export default function SubjectDetailPage() {
     y: number
   } | null>(null)
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false)
+  const [deleteTopicState, setDeleteTopicState] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [pageMessage, setPageMessage] = useState('')
   const transparentDragImage = useMemo(() => {
     if (typeof window === 'undefined') return null
     const image = new window.Image()
@@ -167,19 +179,15 @@ export default function SubjectDetailPage() {
   }
 
   const onDeleteTopic = async (topicId: string, topicName: string) => {
-    const confirmed = window.confirm(
-      `Delete topic "${topicName}" and its sessions? This cannot be undone.`
-    )
-    if (!confirmed) return
-
     try {
       await deleteTopic.mutateAsync({
         subjectId,
         topicId,
       })
-      toast.success(`Deleted topic: ${topicName}`)
+      setDeleteTopicState(null)
+      setPageMessage(`Deleted topic: ${topicName}`)
     } catch {
-      toast.error('Could not delete topic.')
+      setPageMessage('Could not delete topic.')
     }
   }
 
@@ -196,10 +204,27 @@ export default function SubjectDetailPage() {
           position: topicStats.byStatus[status].length,
         },
       })
-      toast.success(`Moved to ${TOPIC_STATUS_LABEL[status]}`)
     } catch {
-      toast.error('Could not move topic.')
+      setPageMessage('Could not move topic.')
     }
+  }
+
+  const onStartPomodoro = async (
+    topicId: string,
+    currentStatus: TopicStatus
+  ) => {
+    if (currentStatus !== 'IN_PROGRESS') {
+      await moveTopicToStatus(topicId, 'IN_PROGRESS')
+    }
+    timer.setActiveSubjectId(subjectId)
+    timer.setSelectedTopicId(topicId)
+    timer.setPhase('focus')
+    timer.setRunning(false)
+    timer.setFinished(false)
+    timer.setHasStarted(false)
+    timer.setMoveDonePromptOpen(false)
+    timer.setPendingReview(false)
+    router.push('/dashboard')
   }
 
   const completedTopics = topicStats.byStatus.DONE.length
@@ -228,11 +253,12 @@ export default function SubjectDetailPage() {
             </Link>
 
             <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">
-              {isLoading ? 'Loading subject...' : subject?.name ?? 'Subject'}
+              {isLoading ? 'Loading subject...' : (subject?.name ?? 'Subject')}
             </h1>
 
             <p className="mt-2 text-sm text-slate-400">
-              Drag topics across stages as you study: Backlog, To Study, In Progress, Done.
+              Drag topics across stages as you study: Backlog, To Study, In
+              Progress, Done.
             </p>
           </div>
 
@@ -247,7 +273,8 @@ export default function SubjectDetailPage() {
               <DialogHeader>
                 <DialogTitle>Add topic</DialogTitle>
                 <DialogDescription>
-                  Add a topic to this subject so you can move it across your study workflow.
+                  Add a topic to this subject so you can move it across your
+                  study workflow.
                 </DialogDescription>
               </DialogHeader>
               <Input
@@ -276,15 +303,29 @@ export default function SubjectDetailPage() {
         <section className="grid gap-4 sm:grid-cols-4">
           <StatCard label="Topics" value={String(topicStats.topics.length)} />
           <StatCard label="Sessions" value={String(topicStats.totalSessions)} />
-          <StatCard label="Tracked time" value={formatDuration(topicStats.totalSeconds)} />
+          <StatCard
+            label="Tracked time"
+            value={formatDuration(topicStats.totalSeconds)}
+          />
           <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
             <CardContent className="px-4 py-4 sm:px-5">
               <p className="text-xs text-slate-400">Completion</p>
-              <p className="mt-1 text-2xl font-extrabold text-white">{completionPct}%</p>
-              <Progress value={Math.max(0, completionPct)} className="mt-2 h-2 bg-white/10" />
+              <p className="mt-1 text-2xl font-extrabold text-white">
+                {completionPct}%
+              </p>
+              <Progress
+                value={Math.max(0, completionPct)}
+                className="mt-2 h-2 bg-white/10"
+              />
             </CardContent>
           </Card>
         </section>
+
+        {!!pageMessage && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+            {pageMessage}
+          </div>
+        )}
 
         <section className="grid gap-4 xl:grid-cols-4">
           {TOPIC_STATUSES.map((status) => (
@@ -325,7 +366,13 @@ export default function SubjectDetailPage() {
               <div className="space-y-2">
                 {topicStats.byStatus[status].map((topic) => {
                   const relative = topicStats.strongest?.totalTime
-                    ? Math.max(8, Math.round((topic.totalTime / topicStats.strongest.totalTime) * 100))
+                    ? Math.max(
+                        8,
+                        Math.round(
+                          (topic.totalTime / topicStats.strongest.totalTime) *
+                            100
+                        )
+                      )
                     : 8
 
                   return (
@@ -336,17 +383,26 @@ export default function SubjectDetailPage() {
                       onDrag={onDragTopic}
                       onDragEnd={clearDragState}
                       className={`rounded-xl border border-white/10 bg-[#0d1627]/80 p-3 transition ${
-                        draggingTopicId === topic.id ? 'opacity-20' : 'opacity-100'
+                        draggingTopicId === topic.id
+                          ? 'opacity-20'
+                          : 'opacity-100'
                       }`}
                     >
                       <div className="mb-1.5 flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-white">{topic.name}</p>
+                        <p className="text-sm font-semibold text-white">
+                          {topic.name}
+                        </p>
                         <div className="flex items-center gap-1">
                           <GripVertical className="h-4 w-4 text-slate-500" />
                           <Button
                             variant="outline"
                             className="h-7 border-red-400/35 bg-red-500/10 px-2 text-red-200 hover:bg-red-500/20"
-                            onClick={() => onDeleteTopic(topic.id, topic.name)}
+                            onClick={() =>
+                              setDeleteTopicState({
+                                id: topic.id,
+                                name: topic.name,
+                              })
+                            }
                             disabled={deleteTopic.isPending}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -366,9 +422,19 @@ export default function SubjectDetailPage() {
                             size="xs"
                             variant="ghost"
                             className="h-6 bg-white/6 text-[11px] text-slate-300 hover:bg-white/12"
-                            onClick={() => moveTopicToStatus(topic.id, 'IN_PROGRESS')}
+                            onClick={() => onStartPomodoro(topic.id, status)}
                           >
-                            Start
+                            Start timer
+                          </Button>
+                        )}
+                        {status === 'IN_PROGRESS' && (
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            className="h-6 bg-cyan-500/15 text-[11px] text-cyan-200 hover:bg-cyan-500/25"
+                            onClick={() => onStartPomodoro(topic.id, status)}
+                          >
+                            Open timer
                           </Button>
                         )}
                         {status !== 'DONE' && (
@@ -402,9 +468,12 @@ export default function SubjectDetailPage() {
               <h2 className="text-base font-bold text-white">Highlight</h2>
               {topicStats.strongest ? (
                 <>
-                  <p className="text-lg font-extrabold text-white">{topicStats.strongest.name}</p>
+                  <p className="text-lg font-extrabold text-white">
+                    {topicStats.strongest.name}
+                  </p>
                   <p className="text-sm text-slate-300">
-                    Most studied topic with {formatDuration(topicStats.strongest.totalTime)} and{' '}
+                    Most studied topic with{' '}
+                    {formatDuration(topicStats.strongest.totalTime)} and{' '}
                     {topicStats.strongest._count.sessions} sessions.
                   </p>
                 </>
@@ -417,11 +486,11 @@ export default function SubjectDetailPage() {
           <Card className="border-white/10 bg-gradient-to-br from-cyan-500/15 to-violet-500/10 py-0 backdrop-blur-xl">
             <CardContent className="space-y-2 px-4 py-5 sm:px-5">
               <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-100">
-                <Sparkles className="h-4 w-4" />
                 Workflow tip
               </p>
               <p className="text-sm text-slate-200">
-                Move topics to In Progress when you start a timer, then to Done after strong sessions to keep momentum visible.
+                Move topics to In Progress when you start a timer, then to Done
+                after strong sessions to keep momentum visible.
               </p>
               <p className="inline-flex items-center gap-1 text-xs text-emerald-200">
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -451,14 +520,36 @@ export default function SubjectDetailPage() {
           }}
         >
           <div className="mb-1.5 flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-white">{dragPreview.name}</p>
+            <p className="text-sm font-semibold text-white">
+              {dragPreview.name}
+            </p>
             <GripVertical className="h-4 w-4 text-cyan-200/90" />
           </div>
           <div className="text-xs text-slate-300">
-            {formatDuration(dragPreview.totalTime)} · {dragPreview.sessions} sessions
+            {formatDuration(dragPreview.totalTime)} · {dragPreview.sessions}{' '}
+            sessions
           </div>
         </div>
       )}
+
+      <ConfirmActionDialog
+        open={!!deleteTopicState}
+        title="Delete topic?"
+        description={
+          deleteTopicState
+            ? `Delete topic "${deleteTopicState.name}" and its sessions? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete topic"
+        pending={deleteTopic.isPending}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTopicState(null)
+        }}
+        onConfirm={() => {
+          if (!deleteTopicState) return
+          void onDeleteTopic(deleteTopicState.id, deleteTopicState.name)
+        }}
+      />
     </div>
   )
 }

@@ -3,7 +3,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Pause, Play, RotateCcw, Zap, Timer, CheckCircle2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import { useClerk } from '@clerk/nextjs'
 
 type Mode = 'blitz' | 'focus' | 'deep'
@@ -52,6 +51,7 @@ export function PublicTimer() {
   const [remaining, setRemaining] = useState(MODE_CONFIG.focus.seconds)
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
+  const [completionMessage, setCompletionMessage] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const config = MODE_CONFIG[mode]
@@ -67,18 +67,10 @@ export function PublicTimer() {
           clearInterval(intervalRef.current!)
           setRunning(false)
           setFinished(true)
-          toast.success(
-            task.trim() ? `"${task}" complete! 🎉` : 'Session complete! 🎉',
-            {
-              description: `Sign up to track your progress, earn XP, and build streaks.`,
-              duration: 8000,
-              action: {
-                label: 'Sign up free',
-                onClick: () => {
-                  clerk.openSignUp()
-                },
-              },
-            }
+          setCompletionMessage(
+            task.trim()
+              ? `"${task}" complete. Sign up to track your progress.`
+              : 'Session complete. Sign up to track your progress.'
           )
           return 0
         }
@@ -97,6 +89,7 @@ export function PublicTimer() {
     clearInterval(intervalRef.current!)
     setRunning(false)
     setFinished(false)
+    setCompletionMessage('')
     setRemaining(config.seconds)
   }
 
@@ -254,6 +247,18 @@ export function PublicTimer() {
         <Zap className="h-3.5 w-3.5" />+{config.xp} XP on completion ·{' '}
         <span className="font-[500] opacity-70">sign up to track</span>
       </div>
+
+      {!!completionMessage && (
+        <div className="max-w-sm rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-center text-[13px] text-slate-200">
+          <p>{completionMessage}</p>
+          <button
+            className="mt-2 font-semibold text-cyan-300 transition hover:text-cyan-200"
+            onClick={() => clerk.openSignUp()}
+          >
+            Sign up free
+          </button>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex items-center gap-4">

@@ -12,6 +12,19 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react'
+import {
+  Bar,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { AppHeader } from '@/components/app-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -32,6 +45,15 @@ function getLevel(totalXP: number) {
   return Math.floor(Math.sqrt(totalXP / 100)) + 1
 }
 
+const CHART_COLORS = [
+  '#7c3aed',
+  '#06b6d4',
+  '#f59e0b',
+  '#10b981',
+  '#f43f5e',
+  '#3b82f6',
+]
+
 export default function StatsPage() {
   const { data: user } = useUser()
   const { data: subjects = [], isLoading: subjectsLoading } = useSubjects()
@@ -51,7 +73,10 @@ export default function StatsPage() {
   const stats = useMemo(() => {
     const subjectSummaries = subjects.map((subject, index) => {
       const topics = topicQueries[index]?.data?.topics ?? []
-      const totalSeconds = topics.reduce((sum, topic) => sum + topic.totalTime, 0)
+      const totalSeconds = topics.reduce(
+        (sum, topic) => sum + topic.totalTime,
+        0
+      )
       const totalSessions = topics.reduce(
         (sum, topic) => sum + topic._count.sessions,
         0
@@ -85,6 +110,26 @@ export default function StatsPage() {
     const topSubject = [...subjectSummaries].sort(
       (a, b) => b.totalSeconds - a.totalSeconds
     )[0]
+
+    const subjectChart = [...subjectSummaries]
+      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+      .slice(0, 8)
+      .map((subject) => ({
+        id: subject.id,
+        name:
+          subject.name.length > 16
+            ? `${subject.name.slice(0, 16)}...`
+            : subject.name,
+        timeMinutes: Math.round(subject.totalSeconds / 60),
+        sessions: subject.totalSessions,
+        topics: subject.topicCount,
+      }))
+
+    const shareChart = subjectChart.map((subject, index) => ({
+      ...subject,
+      value: subject.timeMinutes,
+      color: CHART_COLORS[index % CHART_COLORS.length],
+    }))
 
     const achievements = [
       {
@@ -135,6 +180,8 @@ export default function StatsPage() {
       topicCount,
       avgSessionSeconds,
       topSubject,
+      subjectChart,
+      shareChart,
       achievements,
       quests,
     }
@@ -158,12 +205,17 @@ export default function StatsPage() {
             Your full study analytics
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Deep breakdowns across XP, session volume, subject performance, and time distribution.
+            Deep breakdowns across XP, session volume, subject performance, and
+            time distribution.
           </p>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={Zap} label="Total XP" value={String(user?.totalXP ?? 0)} />
+          <StatCard
+            icon={Zap}
+            label="Total XP"
+            value={String(user?.totalXP ?? 0)}
+          />
           <StatCard
             icon={Rocket}
             label="Current Level"
@@ -181,54 +233,198 @@ export default function StatsPage() {
           />
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-          <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
-            <CardContent className="space-y-4 px-4 py-5 sm:px-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white">Subject breakdown</h2>
-                <Badge className="bg-violet-500/20 text-violet-200">
-                  {stats.subjectSummaries.length} subjects
-                </Badge>
-              </div>
-
-              {isLoading ? (
-                <p className="text-sm text-slate-400">Loading analytics...</p>
-              ) : !stats.subjectSummaries.length ? (
-                <p className="text-sm text-slate-400">Create your first subject to unlock analytics.</p>
-              ) : (
-                <div className="space-y-3">
-                  {stats.subjectSummaries
-                    .sort((a, b) => b.totalSeconds - a.totalSeconds)
-                    .map((subject) => {
-                      const percentage = stats.totalSeconds
-                        ? Math.round((subject.totalSeconds / stats.totalSeconds) * 100)
-                        : 0
-
-                      return (
-                        <div key={subject.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                          <div className="mb-1.5 flex items-center justify-between text-sm">
-                            <span className="font-semibold text-white">{subject.name}</span>
-                            <span className="text-slate-300">{formatDuration(subject.totalSeconds)}</span>
-                          </div>
-                          <Progress value={Math.max(4, percentage)} className="h-2 bg-white/10" />
-                          <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400">
-                            <span>{subject.totalSessions} sessions</span>
-                            <span>{subject.topicCount} topics</span>
-                          </div>
-                        </div>
-                      )
-                    })}
+        <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+          <div className="space-y-6">
+            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <CardContent className="space-y-4 px-4 py-5 sm:px-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-white">
+                    Time + sessions by subject
+                  </h2>
+                  <Badge className="bg-violet-500/20 text-violet-200">
+                    Top {Math.max(0, stats.subjectChart.length)}
+                  </Badge>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {isLoading ? (
+                  <p className="text-sm text-slate-400">Loading analytics...</p>
+                ) : !stats.subjectChart.length ? (
+                  <p className="text-sm text-slate-400">
+                    Create your first subject to unlock analytics.
+                  </p>
+                ) : (
+                  <div className="h-[320px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={stats.subjectChart}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(148,163,184,0.2)"
+                        />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: '#94a3b8', fontSize: 12 }}
+                          axisLine={{ stroke: 'rgba(148,163,184,0.3)' }}
+                          tickLine={{ stroke: 'rgba(148,163,184,0.3)' }}
+                        />
+                        <YAxis
+                          yAxisId="left"
+                          tick={{ fill: '#94a3b8', fontSize: 12 }}
+                          axisLine={{ stroke: 'rgba(148,163,184,0.3)' }}
+                          tickLine={{ stroke: 'rgba(148,163,184,0.3)' }}
+                        />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          tick={{ fill: '#94a3b8', fontSize: 12 }}
+                          axisLine={{ stroke: 'rgba(148,163,184,0.3)' }}
+                          tickLine={{ stroke: 'rgba(148,163,184,0.3)' }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: 'rgba(10,14,30,0.94)',
+                            border: '1px solid rgba(148,163,184,0.25)',
+                            borderRadius: '10px',
+                            color: '#e2e8f0',
+                          }}
+                        />
+                        <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                        <Bar
+                          yAxisId="left"
+                          dataKey="timeMinutes"
+                          name="Minutes"
+                          radius={[6, 6, 0, 0]}
+                          fill="#7c3aed"
+                        />
+                        <Bar
+                          yAxisId="right"
+                          dataKey="sessions"
+                          name="Sessions"
+                          radius={[6, 6, 0, 0]}
+                          fill="#06b6d4"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <CardContent className="space-y-4 px-4 py-5 sm:px-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-white">
+                    Subject breakdown
+                  </h2>
+                  <Badge className="bg-cyan-500/20 text-cyan-200">
+                    {stats.subjectSummaries.length} subjects
+                  </Badge>
+                </div>
+
+                {isLoading ? (
+                  <p className="text-sm text-slate-400">Loading analytics...</p>
+                ) : !stats.subjectSummaries.length ? (
+                  <p className="text-sm text-slate-400">No subject data yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {stats.subjectSummaries
+                      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+                      .map((subject) => {
+                        const percentage = stats.totalSeconds
+                          ? Math.round(
+                              (subject.totalSeconds / stats.totalSeconds) * 100
+                            )
+                          : 0
+
+                        return (
+                          <div
+                            key={subject.id}
+                            className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                          >
+                            <div className="mb-1.5 flex items-center justify-between text-sm">
+                              <span className="font-semibold text-white">
+                                {subject.name}
+                              </span>
+                              <span className="text-slate-300">
+                                {formatDuration(subject.totalSeconds)}
+                              </span>
+                            </div>
+                            <Progress
+                              value={Math.max(4, percentage)}
+                              className="h-2 bg-white/10"
+                            />
+                            <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400">
+                              <span>{subject.totalSessions} sessions</span>
+                              <span>{subject.topicCount} topics</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="space-y-6">
+            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <CardContent className="space-y-4 px-4 py-5 sm:px-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-white">Time share</h2>
+                  <Badge className="bg-emerald-500/20 text-emerald-200">
+                    {stats.shareChart.length} slices
+                  </Badge>
+                </div>
+                {isLoading ? (
+                  <p className="text-sm text-slate-400">Loading chart...</p>
+                ) : !stats.shareChart.length ? (
+                  <p className="text-sm text-slate-400">No chart data yet.</p>
+                ) : (
+                  <div className="h-[260px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.shareChart}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={62}
+                          outerRadius={96}
+                          paddingAngle={2}
+                        >
+                          {stats.shareChart.map((entry) => (
+                            <Cell key={entry.id} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            background: 'rgba(10,14,30,0.94)',
+                            border: '1px solid rgba(148,163,184,0.25)',
+                            borderRadius: '10px',
+                            color: '#e2e8f0',
+                          }}
+                          formatter={(value: number | string | undefined) => [
+                            `${value ?? 0}m`,
+                            'Time',
+                          ]}
+                        />
+                        <Legend
+                          wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
               <CardContent className="space-y-3 px-4 py-5 sm:px-5">
                 <h2 className="text-base font-bold text-white">Daily quests</h2>
                 {stats.quests.map((quest) => {
-                  const progress = Math.round((quest.current / quest.target) * 100)
+                  const progress = Math.round(
+                    (quest.current / quest.target) * 100
+                  )
                   const done = quest.current >= quest.target
                   return (
                     <div
@@ -238,12 +434,17 @@ export default function StatsPage() {
                       <div className="mb-1.5 flex items-center justify-between text-sm">
                         <span className="text-slate-200">{quest.label}</span>
                         <span
-                          className={done ? 'text-emerald-300' : 'text-slate-400'}
+                          className={
+                            done ? 'text-emerald-300' : 'text-slate-400'
+                          }
                         >
                           {quest.current}/{quest.target}
                         </span>
                       </div>
-                      <Progress value={Math.max(4, progress)} className="h-2 bg-white/10" />
+                      <Progress
+                        value={Math.max(4, progress)}
+                        className="h-2 bg-white/10"
+                      />
                     </div>
                   )
                 })}
@@ -267,7 +468,9 @@ export default function StatsPage() {
                         )}
                         {achievement.title}
                       </span>
-                      <span className="text-slate-400">{achievement.progress}%</span>
+                      <span className="text-slate-400">
+                        {achievement.progress}%
+                      </span>
                     </div>
                     <Progress
                       value={Math.max(4, achievement.progress)}
@@ -280,9 +483,19 @@ export default function StatsPage() {
 
             <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
               <CardContent className="space-y-3 px-4 py-5 sm:px-5">
-                <h2 className="text-base font-bold text-white">Performance snapshot</h2>
-                <SnapshotRow label="Current streak" value={`${user?.streak ?? 0} days`} icon={Flame} />
-                <SnapshotRow label="Tracked topics" value={String(stats.topicCount)} icon={BarChart3} />
+                <h2 className="text-base font-bold text-white">
+                  Performance snapshot
+                </h2>
+                <SnapshotRow
+                  label="Current streak"
+                  value={`${user?.streak ?? 0} days`}
+                  icon={Flame}
+                />
+                <SnapshotRow
+                  label="Tracked topics"
+                  value={String(stats.topicCount)}
+                  icon={BarChart3}
+                />
                 <SnapshotRow
                   label="Avg session"
                   value={formatDuration(stats.avgSessionSeconds)}
@@ -296,9 +509,12 @@ export default function StatsPage() {
                 <h2 className="text-base font-bold text-white">Top subject</h2>
                 {stats.topSubject ? (
                   <>
-                    <p className="text-lg font-extrabold text-white">{stats.topSubject.name}</p>
+                    <p className="text-lg font-extrabold text-white">
+                      {stats.topSubject.name}
+                    </p>
                     <p className="text-sm text-slate-300">
-                      {formatDuration(stats.topSubject.totalSeconds)} across {stats.topSubject.totalSessions} sessions.
+                      {formatDuration(stats.topSubject.totalSeconds)} across{' '}
+                      {stats.topSubject.totalSessions} sessions.
                     </p>
                   </>
                 ) : (

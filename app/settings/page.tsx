@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Link2, Loader2, Save, Timer, Unplug } from 'lucide-react'
-import { toast } from 'sonner'
 import { AppHeader } from '@/components/app-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +15,7 @@ export default function SettingsPage() {
     connected: false,
     isLoading: true,
   })
+  const [settingsMessage, setSettingsMessage] = useState('')
 
   const [blitzMinutes, setBlitzMinutes] = useState('10')
   const [focusMinutes, setFocusMinutes] = useState('25')
@@ -60,15 +60,15 @@ export default function SettingsPage() {
     const deep = Number(effectiveDeep)
 
     if (!Number.isFinite(blitz) || blitz < 5 || blitz > 120) {
-      toast.error('Blitz must be between 5 and 120 minutes.')
+      setSettingsMessage('Blitz must be between 5 and 120 minutes.')
       return
     }
     if (!Number.isFinite(focus) || focus < 10 || focus > 180) {
-      toast.error('Focus must be between 10 and 180 minutes.')
+      setSettingsMessage('Focus must be between 10 and 180 minutes.')
       return
     }
     if (!Number.isFinite(deep) || deep < 15 || deep > 240) {
-      toast.error('Deep must be between 15 and 240 minutes.')
+      setSettingsMessage('Deep must be between 15 and 240 minutes.')
       return
     }
 
@@ -78,9 +78,9 @@ export default function SettingsPage() {
         focusMinutes: focus,
         deepMinutes: deep,
       })
-      toast.success('Timer settings saved.')
+      setSettingsMessage('Timer settings saved.')
     } catch {
-      toast.error('Could not save settings.')
+      setSettingsMessage('Could not save settings.')
     }
   }
 
@@ -101,9 +101,9 @@ export default function SettingsPage() {
         connected: false,
         isLoading: false,
       })
-      toast.success('Spotify disconnected.')
+      setSettingsMessage('Spotify disconnected.')
     } catch {
-      toast.error('Could not disconnect Spotify.')
+      setSettingsMessage('Could not disconnect Spotify.')
     } finally {
       setSpotifyState((prev) => ({ ...prev, isDisconnecting: false }))
     }
@@ -130,6 +130,12 @@ export default function SettingsPage() {
             Customize your Blitz, Focus, and Deep durations. Dashboard timers will use these values.
           </p>
         </section>
+
+        {!!settingsMessage && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+            {settingsMessage}
+          </div>
+        )}
 
         <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
           <CardContent className="space-y-5 px-4 py-5 sm:px-6">
