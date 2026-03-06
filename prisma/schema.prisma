@@ -23,6 +23,8 @@ model User {
   blitzMinutes  Int       @default(10)
   focusMinutes  Int       @default(25)
   deepMinutes   Int       @default(50)
+  shortBreakMinutes Int   @default(5)
+  longBreakMinutes  Int   @default(10)
   totalXP       Int       @default(0)
   streak        Int       @default(0)
   onboarded     Boolean   @default(false)

@@ -19,7 +19,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   useTimer,
-  type BreakLength,
   type TimerMode as Mode,
 } from '@/app/providers/timer-provider'
 import { useCompleteSession } from '@/hooks/use-sessions'
@@ -56,20 +55,14 @@ const DEFAULT_TIMER_MINUTES = {
   blitz: 10,
   focus: 25,
   deep: 50,
+  shortBreak: 5,
+  longBreak: 10,
 } as const
 
-const BREAK_SECONDS: Record<BreakLength, Record<Mode, number>> = {
-  short: {
-    blitz: 2 * 60,
-    focus: 5 * 60,
-    deep: 10 * 60,
-  },
-  long: {
-    blitz: 5 * 60,
-    focus: 10 * 60,
-    deep: 15 * 60,
-  },
-}
+const BREAK_SECONDS = (shortBreakMinutes: number, longBreakMinutes: number) => ({
+  short: shortBreakMinutes * 60,
+  long: longBreakMinutes * 60,
+})
 
 function pad(value: number) {
   return String(value).padStart(2, '0')
@@ -143,8 +136,12 @@ export default function DashboardPage() {
   )
 
   const activeMode = modeConfig[mode]
+  const breakSeconds = BREAK_SECONDS(
+    user?.shortBreakMinutes ?? DEFAULT_TIMER_MINUTES.shortBreak,
+    user?.longBreakMinutes ?? DEFAULT_TIMER_MINUTES.longBreak
+  )
   const totalSeconds =
-    phase === 'focus' ? activeMode.seconds : BREAK_SECONDS[breakLength][mode]
+    phase === 'focus' ? activeMode.seconds : breakSeconds[breakLength]
 
   const resolvedSubjectId = useMemo(() => {
     if (!subjects.length) return ''
@@ -195,7 +192,7 @@ export default function DashboardPage() {
     const nextTotal =
       phase === 'focus'
         ? modeConfig[nextMode].seconds
-        : BREAK_SECONDS[breakLength][nextMode]
+        : breakSeconds[breakLength]
     setMode(nextMode)
     setFinished(false)
     setHasStarted(false)
@@ -263,7 +260,7 @@ export default function DashboardPage() {
         onSuccess: () => {
           setFinished(false)
           setPhase('break')
-          setRemaining(BREAK_SECONDS[breakLength][mode])
+          setRemaining(breakSeconds[breakLength])
           setHasStarted(false)
           setPageMessage(`Session saved: +${activeMode.xp} XP. Break is ready.`)
 
@@ -514,7 +511,7 @@ export default function DashboardPage() {
               <Badge className="border border-white/10 bg-white/[0.04] text-slate-300">
                 {phase === 'focus'
                   ? `${activeMode.label} session`
-                  : `${Math.round(BREAK_SECONDS[breakLength][mode] / 60)} min ${breakLength} break`}
+                  : `${Math.round(breakSeconds[breakLength] / 60)} min ${breakLength} break`}
               </Badge>
               <Badge className="bg-violet-500/20 text-violet-200">+{activeMode.xp} XP focus reward</Badge>
             </div>

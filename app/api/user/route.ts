@@ -29,6 +29,12 @@ export const PATCH = withAuth(
           ...(parsed.deepMinutes !== undefined && {
             deepMinutes: parsed.deepMinutes,
           }),
+          ...(parsed.shortBreakMinutes !== undefined && {
+            shortBreakMinutes: parsed.shortBreakMinutes,
+          }),
+          ...(parsed.longBreakMinutes !== undefined && {
+            longBreakMinutes: parsed.longBreakMinutes,
+          }),
         },
       })
 
