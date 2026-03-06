@@ -7,12 +7,15 @@ import {
   SignUpButton,
   UserButton,
 } from '@clerk/nextjs'
-import { motion } from 'framer-motion'
-import { Flame, Star, Trophy, Zap } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Flame, Star, Zap } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 import { PublicTimer } from '@/components/public-timer'
 
 export default function RootPage() {
+  const [timerRunning, setTimerRunning] = useState(false)
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#060a14] text-slate-100">
       <div className="pointer-events-none absolute inset-0">
@@ -24,136 +27,117 @@ export default function RootPage() {
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-10">
-        <header className="flex items-center justify-between">
-          <div className="leading-none text-white">
-            <span className="block text-lg font-black tracking-tight sm:text-xl">
-              Tempo
-            </span>
-            <span className="mt-0.5 block text-[10px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
-              by Patrick
-            </span>
-          </div>
+        <AnimatePresence>
+          {!timerRunning && (
+            <motion.header
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="flex items-center justify-between"
+            >
+              <div className="leading-none text-white">
+                <span className="block text-lg font-black tracking-tight sm:text-xl">
+                  Tempo
+                </span>
+                <span className="mt-0.5 block text-[10px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+                  by Patrick
+                </span>
+              </div>
 
-          <nav className="flex items-center gap-2">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:text-white">
-                  Sign in
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500">
-                  Sign up
-                </button>
-              </SignUpButton>
-            </SignedOut>
+              <nav className="flex items-center gap-2">
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <button className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:text-white">
+                      Sign in
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button className="rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500">
+                      Sign up
+                    </button>
+                  </SignUpButton>
+                </SignedOut>
 
-            <SignedIn>
-              <Link
-                href="/dashboard"
-                className="rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500"
-              >
-                Dashboard
-              </Link>
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: 'w-8 h-8 border border-violet-400/50',
-                  },
-                }}
-              />
-            </SignedIn>
-          </nav>
-        </header>
+                <SignedIn>
+                  <Link
+                    href="/dashboard"
+                    className="rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+                  >
+                    Dashboard
+                  </Link>
+                  <UserButton
+                    appearance={{
+                      elements: {
+                        avatarBox: 'w-8 h-8 border border-violet-400/50',
+                      },
+                    }}
+                  />
+                </SignedIn>
+              </nav>
+            </motion.header>
+          )}
+        </AnimatePresence>
 
         <main className="flex flex-1 flex-col items-center justify-center py-8 sm:py-10">
           <motion.div
-            className="mb-4 flex flex-wrap items-center justify-center gap-2"
-            initial={{ opacity: 0, y: -8 }}
+            className="w-full max-w-2xl"
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
           >
-            <StatusPill
-              icon={Flame}
-              label="Daily streak challenge"
-              className="border-orange-400/30 bg-orange-500/15 text-orange-100"
-            />
-            <StatusPill
-              icon={Zap}
-              label="+25 XP focus run"
-              className="border-violet-400/30 bg-violet-500/15 text-violet-100"
-            />
-            <StatusPill
-              icon={Trophy}
-              label="Quest board unlocked"
-              className="border-cyan-400/30 bg-cyan-500/15 text-cyan-100"
-            />
+            <AnimatePresence mode="wait">
+              {!timerRunning && (
+                <motion.div
+                  key="demo-pill"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="mb-4 flex items-center justify-center"
+                >
+                  <span className="rounded-full border border-cyan-400/25 bg-cyan-500/15 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-cyan-100 uppercase">
+                    Demo mode · Try timer instantly
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <PublicTimer onRunningChange={setTimerRunning} immersive />
           </motion.div>
 
-          <motion.div
-            className="w-full max-w-2xl"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-          >
-            <div className="mb-4 flex items-center justify-center gap-2">
-              <span className="rounded-full border border-cyan-400/25 bg-cyan-500/15 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-cyan-100 uppercase">
-                Demo mode
-              </span>
-              <span className="rounded-full border border-violet-400/25 bg-violet-500/15 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-violet-100 uppercase">
-                Try timer instantly
-              </span>
-            </div>
-            <PublicTimer />
-          </motion.div>
-
-          <motion.div
-            className="mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.35, ease: 'easeOut' }}
-          >
-            <QuestCard
-              icon={Star}
-              title="Quick quest"
-              subtitle="Complete 1 Blitz to start your streak."
-              accent="from-fuchsia-500/20 to-violet-500/10"
-            />
-            <QuestCard
-              icon={Zap}
-              title="XP pulse"
-              subtitle="Finish a Focus run and bank XP."
-              accent="from-violet-500/20 to-cyan-500/10"
-            />
-            <QuestCard
-              icon={Flame}
-              title="Momentum"
-              subtitle="Return tomorrow to grow your streak."
-              accent="from-amber-500/20 to-orange-500/10"
-            />
-          </motion.div>
+          <AnimatePresence>
+            {!timerRunning && (
+              <motion.div
+                className="mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ delay: 0.08, duration: 0.25, ease: 'easeOut' }}
+              >
+                <QuestCard
+                  icon={Star}
+                  title="Quick quest"
+                  subtitle="Complete 1 Blitz to start your streak."
+                  accent="from-fuchsia-500/20 to-violet-500/10"
+                />
+                <QuestCard
+                  icon={Zap}
+                  title="XP pulse"
+                  subtitle="Finish a Focus run and bank XP."
+                  accent="from-violet-500/20 to-cyan-500/10"
+                />
+                <QuestCard
+                  icon={Flame}
+                  title="Momentum"
+                  subtitle="Return tomorrow to grow your streak."
+                  accent="from-amber-500/20 to-orange-500/10"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
     </div>
-  )
-}
-
-function StatusPill({
-  icon: Icon,
-  label,
-  className,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  className: string
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase ${className}`}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </span>
   )
 }
 

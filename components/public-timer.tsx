@@ -44,7 +44,13 @@ function formatTime(seconds: number) {
   return `${pad(m)}:${pad(s)}`
 }
 
-export function PublicTimer() {
+export function PublicTimer({
+  onRunningChange,
+  immersive = false,
+}: {
+  onRunningChange?: (running: boolean) => void
+  immersive?: boolean
+}) {
   const clerk = useClerk()
   const [mode, setMode] = useState<Mode>('focus')
   const [task, setTask] = useState('')
@@ -57,7 +63,12 @@ export function PublicTimer() {
   const config = MODE_CONFIG[mode]
   const total = config.seconds
   const progress = 1 - remaining / total
-  const circumference = 2 * Math.PI * 100
+  const isImmersiveRunning = immersive && running
+  const ringRadius = isImmersiveRunning ? 132 : 100
+  const ringSize = isImmersiveRunning ? 332 : 260
+  const ringCenter = ringSize / 2
+  const ringStroke = isImmersiveRunning ? 8 : 6
+  const circumference = 2 * Math.PI * ringRadius
 
   useEffect(() => {
     if (!running) return
@@ -80,6 +91,10 @@ export function PublicTimer() {
     return () => clearInterval(intervalRef.current!)
   }, [running, task, clerk])
 
+  useEffect(() => {
+    onRunningChange?.(running)
+  }, [running, onRunningChange])
+
   const handlePlayPause = () => {
     if (finished) return
     setRunning((r) => !r)
@@ -95,74 +110,93 @@ export function PublicTimer() {
 
   return (
     <div className="flex flex-col items-center gap-10">
-      <div className="flex gap-2 rounded-2xl border border-white/10 bg-white/5 p-1.5 backdrop-blur-sm">
-        {(Object.keys(MODE_CONFIG) as Mode[]).map((m) => {
-          const cfg = MODE_CONFIG[m]
-          const active = mode === m
-          return (
-            <motion.button
-              key={m}
-              onClick={() => {
-                if (!running) {
-                  setMode(m)
-                  setRemaining(cfg.seconds)
-                  setFinished(false)
-                }
-              }}
-              disabled={running}
-              whileHover={{ scale: running ? 1 : 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              className="relative flex flex-col items-center gap-0.5 rounded-xl px-5 py-2.5 text-sm font-[700] transition-all disabled:cursor-not-allowed"
-              style={
-                active
-                  ? {
-                      backgroundColor: `${cfg.color}22`,
-                      color: cfg.color,
-                      boxShadow: `0 0 18px ${cfg.color}30`,
+      <AnimatePresence>
+        {!(immersive && running) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="flex gap-2 rounded-2xl border border-white/10 bg-white/5 p-1.5 backdrop-blur-sm"
+          >
+            {(Object.keys(MODE_CONFIG) as Mode[]).map((m) => {
+              const cfg = MODE_CONFIG[m]
+              const active = mode === m
+              return (
+                <motion.button
+                  key={m}
+                  onClick={() => {
+                    if (!running) {
+                      setMode(m)
+                      setRemaining(cfg.seconds)
+                      setFinished(false)
                     }
-                  : { color: 'rgba(226,232,240,0.82)' }
-              }
-            >
-              <span>{cfg.label}</span>
-              <span className="text-[10px] font-[500] opacity-80">
-                {cfg.desc}
-              </span>
-              {active && (
-                <motion.div
-                  layoutId="mode-pill"
-                  className="absolute inset-0 rounded-xl border"
-                  style={{ borderColor: `${cfg.color}40` }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-            </motion.button>
-          )
-        })}
-      </div>
+                  }}
+                  disabled={running}
+                  whileHover={{ scale: running ? 1 : 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="relative flex flex-col items-center gap-0.5 rounded-xl px-5 py-2.5 text-sm font-[700] transition-all disabled:cursor-not-allowed"
+                  style={
+                    active
+                      ? {
+                          backgroundColor: `${cfg.color}22`,
+                          color: cfg.color,
+                          boxShadow: `0 0 18px ${cfg.color}30`,
+                        }
+                      : { color: 'rgba(226,232,240,0.82)' }
+                  }
+                >
+                  <span>{cfg.label}</span>
+                  <span className="text-[10px] font-[500] opacity-80">
+                    {cfg.desc}
+                  </span>
+                  {active && (
+                    <motion.div
+                      layoutId="mode-pill"
+                      className="absolute inset-0 rounded-xl border"
+                      style={{ borderColor: `${cfg.color}40` }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                </motion.button>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Task input */}
-      <div className="w-full max-w-sm">
-        <div className="relative flex items-center">
-          <Timer className="absolute left-4 h-4 w-4 text-slate-300/70" />
-          <input
-            type="text"
-            placeholder="What are you working on?"
-            value={task}
-            onChange={(e) => setTask(e.target.value)}
-            maxLength={60}
-            className="w-full rounded-xl border border-white/15 bg-white/8 py-3 pr-4 pl-11 text-[14px] text-slate-100 placeholder:text-slate-400/85 backdrop-blur-sm transition-colors focus:border-white/30 focus:ring-0 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Circular ring timer */}
+      <AnimatePresence>
+        {!(immersive && running) && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="w-full max-w-sm"
+          >
+            <div className="relative flex items-center">
+              <Timer className="absolute left-4 h-4 w-4 text-slate-300/70" />
+              <input
+                type="text"
+                placeholder="What are you working on?"
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
+                maxLength={60}
+                className="w-full rounded-xl border border-white/15 bg-white/8 py-3 pr-4 pl-11 text-[14px] text-slate-100 placeholder:text-slate-400/85 backdrop-blur-sm transition-colors focus:border-white/30 focus:ring-0 focus:outline-none"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       <div className="relative flex items-center justify-center">
         {/* Ambient glow */}
         <motion.div
           className="absolute rounded-full blur-[80px]"
           style={{
-            width: 220,
-            height: 220,
+            width: isImmersiveRunning ? 300 : 220,
+            height: isImmersiveRunning ? 300 : 220,
             backgroundColor: `${config.color}20`,
           }}
           animate={
@@ -173,25 +207,25 @@ export function PublicTimer() {
           transition={{ duration: 3, repeat: Infinity }}
         />
 
-        <svg width="260" height="260" className="-rotate-90">
+        <svg width={ringSize} height={ringSize} className="-rotate-90">
           {/* Track */}
           <circle
-            cx="130"
-            cy="130"
-            r="100"
+            cx={ringCenter}
+            cy={ringCenter}
+            r={ringRadius}
             fill="none"
             stroke="currentColor"
-            strokeWidth="6"
+            strokeWidth={ringStroke}
             className="text-white/5"
           />
           {/* Progress */}
           <motion.circle
-            cx="130"
-            cy="130"
-            r="100"
+            cx={ringCenter}
+            cy={ringCenter}
+            r={ringRadius}
             fill="none"
             stroke={config.color}
-            strokeWidth="6"
+            strokeWidth={ringStroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
@@ -225,7 +259,7 @@ export function PublicTimer() {
                 className="flex flex-col items-center gap-1"
               >
                 <span
-                  className="font-mono text-[52px] leading-none font-[900] tracking-[-0.06em]"
+                  className={`font-mono leading-none font-[900] tracking-[-0.06em] ${isImmersiveRunning ? 'text-[72px]' : 'text-[52px]'}`}
                   style={{ color: 'var(--color-foreground)' }}
                 >
                   {formatTime(remaining)}
@@ -240,13 +274,21 @@ export function PublicTimer() {
       </div>
 
       {/* XP badge */}
-      <div
-        className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-[800]"
-        style={{ backgroundColor: `${config.color}12`, color: config.color }}
-      >
-        <Zap className="h-3.5 w-3.5" />+{config.xp} XP on completion ·{' '}
-        <span className="font-[500] opacity-70">sign up to track</span>
-      </div>
+      <AnimatePresence>
+        {!(immersive && running) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-[800]"
+            style={{ backgroundColor: `${config.color}12`, color: config.color }}
+          >
+            <Zap className="h-3.5 w-3.5" />+{config.xp} XP on completion ·{' '}
+            <span className="font-[500] opacity-70">sign up to track</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {!!completionMessage && (
         <div className="max-w-sm rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-center text-[13px] text-slate-200">
@@ -263,14 +305,22 @@ export function PublicTimer() {
       {/* Controls */}
       <div className="flex items-center gap-4">
         {/* Reset */}
-        <motion.button
-          onClick={handleReset}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/8 backdrop-blur-sm transition-colors hover:bg-white/12"
-        >
-          <RotateCcw className="h-5 w-5 text-slate-200" />
-        </motion.button>
+        <AnimatePresence>
+          {!(immersive && running) && (
+            <motion.button
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              onClick={handleReset}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/8 backdrop-blur-sm transition-colors hover:bg-white/12"
+            >
+              <RotateCcw className="h-5 w-5 text-slate-200" />
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Play / Pause */}
         <motion.button
