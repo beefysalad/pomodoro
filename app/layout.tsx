@@ -4,7 +4,7 @@ import './globals.css'
 import { QueryProvider } from './providers/query-provider'
 import { ThemeProvider } from './providers/theme-provider'
 import { TimerProvider } from './providers/timer-provider'
-import { dark } from '@clerk/themes'
+import { dark, shadcn } from '@clerk/themes'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'sonner'
 import { Analytics } from '@vercel/analytics/next'
@@ -33,15 +33,52 @@ export default function RootLayout({
   return (
     <ClerkProvider
       appearance={{
-        baseTheme: dark,
+        baseTheme: [shadcn, dark],
         variables: {
           colorPrimary: '#7C3AED',
-          colorBackground: '#111827',
-          colorInputBackground: '#111827',
+          colorBackground: '#070b16',
+          colorNeutral: '#1f2937',
+          colorInputBackground: '#111a2d',
           colorInputText: '#E2E8F0',
           colorTextOnPrimaryBackground: '#ffffff',
-          colorText: '#E2E8F0',
-          colorTextSecondary: '#94A3B8',
+          colorText: '#f1f5f9',
+          colorTextSecondary: '#cbd5e1',
+          borderRadius: '0.75rem',
+        },
+        elements: {
+          card: 'shadow-2xl border border-white/12 bg-[#0d1628]/96 backdrop-blur-xl',
+          headerTitle: 'text-white tracking-tight',
+          headerSubtitle: 'text-slate-300',
+          formFieldLabel: 'text-slate-200',
+          formFieldInputShowPasswordButton: 'text-slate-300 hover:text-white',
+          formFieldInput:
+            'border border-white/15 bg-white/8 text-slate-100 placeholder:text-slate-400',
+          identityPreviewText: 'text-slate-100',
+          identityPreviewEditButton: 'text-cyan-300 hover:text-cyan-200',
+          formButtonPrimary:
+            'bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_24px_rgba(124,58,237,0.35)]',
+          socialButtonsBlockButton:
+            'border border-white/15 bg-white/8 text-slate-100 hover:bg-white/14',
+          socialButtonsBlockButtonText: 'text-slate-100',
+          socialButtonsProviderIcon: 'opacity-100',
+          dividerLine: 'bg-white/10',
+          dividerText: 'text-slate-400',
+          formResendCodeLink: 'text-cyan-300 hover:text-cyan-200',
+          otpCodeFieldInput:
+            'border border-white/15 bg-white/8 text-slate-100',
+          footer:
+            'border-t border-white/10 bg-[#0d1628]/96 text-slate-300',
+          footerAction: 'text-slate-300',
+          footerActionLink: 'text-cyan-300 hover:text-cyan-200',
+          formFieldSuccessText: 'text-emerald-300',
+          formFieldWarningText: 'text-amber-300',
+          formFieldErrorText: 'text-red-300',
+          userButtonPopoverCard:
+            'border border-white/10 bg-[#0b1220]/95 text-slate-100 shadow-2xl backdrop-blur-xl',
+          userButtonPopoverActionButton:
+            'text-slate-200 hover:bg-white/10 hover:text-white',
+          userButtonPopoverActionButtonText: 'text-slate-200',
+          userButtonPopoverFooter: 'hidden',
         },
       }}
     >

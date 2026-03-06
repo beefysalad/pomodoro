@@ -22,6 +22,7 @@ import { useCreateSubject, useSubjects } from '@/hooks/use-subjects'
 import { useCreateTopic } from '@/hooks/use-topics'
 import { useUpdateUser, useUser } from '@/hooks/use-user'
 import { getTopics } from '@/lib/api/topics'
+import { getLevelFromXp } from '@/lib/progression'
 
 const STEP_TITLES = [
   'Welcome',
@@ -31,10 +32,6 @@ const STEP_TITLES = [
   'How Tempo Works',
   'Finish Setup',
 ] as const
-
-function getLevel(totalXP: number) {
-  return Math.floor(Math.sqrt(totalXP / 100)) + 1
-}
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -340,7 +337,7 @@ export default function OnboardingPage() {
                       unlock full tracking.
                     </p>
                     <div className="grid gap-2.5 sm:grid-cols-3">
-                      <QuickStat label="Level" value={`Lvl ${getLevel(user?.totalXP ?? 0)}`} />
+                      <QuickStat label="Level" value={`Lvl ${getLevelFromXp(user?.totalXP ?? 0)}`} />
                       <QuickStat label="Streak" value={`${user?.streak ?? 0} days`} />
                       <QuickStat label="XP" value={`${user?.totalXP ?? 0}`} />
                     </div>

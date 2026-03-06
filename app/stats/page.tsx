@@ -9,6 +9,7 @@ import {
   Flame,
   Lock,
   Rocket,
+  Target,
   Trophy,
   Zap,
 } from 'lucide-react'
@@ -30,6 +31,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { getTopics } from '@/lib/api/topics'
+import { getLevelFromXp, getLevelProgress } from '@/lib/progression'
 import { useSubjects } from '@/hooks/use-subjects'
 import { useUser } from '@/hooks/use-user'
 
@@ -41,8 +43,8 @@ function formatDuration(totalSeconds: number) {
   return `${hours}h ${mins}m`
 }
 
-function getLevel(totalXP: number) {
-  return Math.floor(Math.sqrt(totalXP / 100)) + 1
+function formatPercent(value: number) {
+  return `${Math.round(value)}%`
 }
 
 const CHART_COLORS = [
@@ -56,6 +58,10 @@ const CHART_COLORS = [
 
 export default function StatsPage() {
   const { data: user } = useUser()
+  const levelProgress = getLevelProgress(user?.totalXP ?? 0)
+  const streak = user?.streak ?? 0
+  const nextStreakGoal =
+    streak < 3 ? 3 : streak < 7 ? 7 : streak < 14 ? 14 : streak + 7
   const { data: subjects = [], isLoading: subjectsLoading } = useSubjects()
 
   const topicQueries = useQueries({
@@ -81,10 +87,13 @@ export default function StatsPage() {
         (sum, topic) => sum + topic._count.sessions,
         0
       )
+      const doneTopics = topics.filter((topic) => topic.status === 'DONE').length
 
       return {
         ...subject,
+        topics,
         topicCount: topics.length,
+        doneTopics,
         totalSeconds,
         totalSessions,
       }
@@ -110,6 +119,31 @@ export default function StatsPage() {
     const topSubject = [...subjectSummaries].sort(
       (a, b) => b.totalSeconds - a.totalSeconds
     )[0]
+    const doneTopics = subjectSummaries.reduce(
+      (sum, subject) => sum + subject.doneTopics,
+      0
+    )
+    const completionRate = topicCount ? (doneTopics / topicCount) * 100 : 0
+    const concentrationRate = totalSeconds
+      ? ((topSubject?.totalSeconds ?? 0) / totalSeconds) * 100
+      : 0
+    const consistencyScore = Math.min(
+      100,
+      Math.round((user?.streak ?? 0) * 6 + Math.min(totalSessions, 20) * 3)
+    )
+
+    const topTopics = subjectSummaries
+      .flatMap((subject) =>
+        subject.topics.map((topic) => ({
+          id: topic.id,
+          name: topic.name,
+          subjectName: subject.name,
+          totalSeconds: topic.totalTime,
+          sessions: topic._count.sessions,
+        }))
+      )
+      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+      .slice(0, 6)
 
     const subjectChart = [...subjectSummaries]
       .sort((a, b) => b.totalSeconds - a.totalSeconds)
@@ -180,6 +214,10 @@ export default function StatsPage() {
       topicCount,
       avgSessionSeconds,
       topSubject,
+      completionRate,
+      concentrationRate,
+      consistencyScore,
+      topTopics,
       subjectChart,
       shareChart,
       achievements,
@@ -219,7 +257,7 @@ export default function StatsPage() {
           <StatCard
             icon={Rocket}
             label="Current Level"
-            value={`Lvl ${getLevel(user?.totalXP ?? 0)}`}
+            value={`Lvl ${getLevelFromXp(user?.totalXP ?? 0)}`}
           />
           <StatCard
             icon={Clock3}
@@ -230,6 +268,78 @@ export default function StatsPage() {
             icon={BarChart3}
             label="Sessions"
             value={String(stats.totalSessions)}
+          />
+        </section>
+
+        <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+          <CardContent className="space-y-3 px-4 py-5 sm:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-white">Level progress</h2>
+              <Badge className="bg-cyan-500/20 text-cyan-200">
+                {levelProgress.xpToNext} XP to Level {levelProgress.level + 1}
+              </Badge>
+            </div>
+            <Progress value={levelProgress.progressPct} className="h-2.5 bg-white/10" />
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span>
+                Level {levelProgress.level} • {levelProgress.xpIntoLevel}/{levelProgress.xpForLevel} XP
+              </span>
+              <span>{Math.round(levelProgress.progressPct)}%</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <section className="rounded-2xl border border-orange-300/35 bg-gradient-to-r from-orange-500/22 via-amber-500/12 to-transparent px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border border-orange-300/45 bg-orange-500/20 p-2">
+                <Flame className="h-5 w-5 text-orange-100" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-orange-100 uppercase">
+                  Streak spotlight
+                </p>
+                <p className="text-3xl leading-none font-black text-white sm:text-4xl">
+                  {streak}
+                  <span className="ml-1 text-lg font-semibold text-orange-100/90 sm:text-xl">
+                    day{streak === 1 ? '' : 's'}
+                  </span>
+                </p>
+                <p className="text-xs text-orange-100/80">
+                  Keep showing up daily to protect momentum.
+                </p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-orange-300/35 bg-orange-500/15 px-3 py-2 text-right">
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-orange-100 uppercase">
+                Next goal
+              </p>
+              <p className="text-lg font-extrabold text-white">{nextStreakGoal} days</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-3">
+          <InsightCard
+            icon={Flame}
+            label="Consistency score"
+            value={formatPercent(stats.consistencyScore)}
+            hint="Derived from streak and session cadence."
+            accent="from-orange-500/18 to-orange-500/5"
+          />
+          <InsightCard
+            icon={CheckCircle2}
+            label="Topic completion"
+            value={formatPercent(stats.completionRate)}
+            hint="Done topics across all tracked topics."
+            accent="from-emerald-500/18 to-emerald-500/5"
+          />
+          <InsightCard
+            icon={Target}
+            label="Focus concentration"
+            value={formatPercent(stats.concentrationRate)}
+            hint="How much time is concentrated in your top subject."
+            accent="from-cyan-500/18 to-cyan-500/5"
           />
         </section>
 
@@ -286,6 +396,8 @@ export default function StatsPage() {
                             borderRadius: '10px',
                             color: '#e2e8f0',
                           }}
+                          labelStyle={{ color: '#f8fafc' }}
+                          itemStyle={{ color: '#cbd5e1' }}
                         />
                         <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                         <Bar
@@ -403,6 +515,8 @@ export default function StatsPage() {
                             borderRadius: '10px',
                             color: '#e2e8f0',
                           }}
+                          labelStyle={{ color: '#f8fafc' }}
+                          itemStyle={{ color: '#cbd5e1' }}
                           formatter={(value: number | string | undefined) => [
                             `${value ?? 0}m`,
                             'Time',
@@ -410,9 +524,47 @@ export default function StatsPage() {
                         />
                         <Legend
                           wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }}
+                          formatter={(value) => (
+                            <span style={{ color: '#cbd5e1' }}>{value}</span>
+                          )}
                         />
                       </PieChart>
                     </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <CardContent className="space-y-3 px-4 py-5 sm:px-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-white">Top topics</h2>
+                  <Badge className="bg-violet-500/20 text-violet-200">
+                    {stats.topTopics.length} tracked
+                  </Badge>
+                </div>
+                {!stats.topTopics.length ? (
+                  <p className="text-sm text-slate-400">No topic data yet.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {stats.topTopics.map((topic, index) => (
+                      <div
+                        key={topic.id}
+                        className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-semibold text-white">
+                            #{index + 1} {topic.name}
+                          </p>
+                          <p className="text-xs text-slate-300">
+                            {formatDuration(topic.totalSeconds)}
+                          </p>
+                        </div>
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {topic.subjectName} · {topic.sessions} sessions
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -584,5 +736,35 @@ function SnapshotRow({
       </span>
       <span className="text-sm font-semibold text-white">{value}</span>
     </div>
+  )
+}
+
+function InsightCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  value: string
+  hint: string
+  accent: string
+}) {
+  return (
+    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+      <CardContent className="relative overflow-hidden px-4 py-4 sm:px-5">
+        <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent}`} />
+        <div className="relative">
+          <p className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+            <Icon className="h-3.5 w-3.5 text-slate-200" />
+            {label}
+          </p>
+          <p className="mt-1 text-2xl font-extrabold text-white">{value}</p>
+          <p className="mt-1 text-xs text-slate-300">{hint}</p>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

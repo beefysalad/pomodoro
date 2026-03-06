@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   CheckCircle2,
+  Flame,
   Maximize2,
   Minimize2,
   Pause,
@@ -21,6 +22,7 @@ import {
   useTimer,
   type TimerMode as Mode,
 } from '@/app/providers/timer-provider'
+import { getLevelFromXp } from '@/lib/progression'
 import { useCompleteSession } from '@/hooks/use-sessions'
 import { useSubjects } from '@/hooks/use-subjects'
 import { useSubjectTopics, useUpdateTopic } from '@/hooks/use-topics'
@@ -74,10 +76,6 @@ function formatClock(seconds: number) {
   return `${pad(mins)}:${pad(secs)}`
 }
 
-function getLevel(totalXP: number) {
-  return Math.floor(Math.sqrt(totalXP / 100)) + 1
-}
-
 export default function DashboardPage() {
   const { data: user } = useUser()
   const { data: subjects = [] } = useSubjects()
@@ -113,6 +111,7 @@ export default function DashboardPage() {
     setHasStarted,
   } = timer
   const pendingReview = phase === 'focus' && finished
+  const forceCompletionFocus = finished
 
   const modeConfig = useMemo(
     () => ({
@@ -163,6 +162,7 @@ export default function DashboardPage() {
   }, [topics, selectedTopicId])
 
   const currentTopic = topics.find((topic) => topic.id === resolvedTopicId)
+  const streak = user?.streak ?? 0
 
   useEffect(() => {
     if (!isFocusMode) return
@@ -253,16 +253,20 @@ export default function DashboardPage() {
         topicId: resolvedTopicId,
         mode,
         duration: activeMode.seconds,
-        xpEarned: activeMode.xp,
         rating,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           setFinished(false)
           setPhase('break')
           setRemaining(breakSeconds[breakLength])
           setHasStarted(false)
-          setPageMessage(`Session saved: +${activeMode.xp} XP. Break is ready.`)
+          const levelNote = data.progression.leveledUp
+            ? ` Level up: ${data.progression.previousLevel} -> ${data.progression.newLevel}.`
+            : ''
+          setPageMessage(
+            `Session saved: +${data.progression.xpAwarded} XP. Streak: ${data.progression.streak} day(s).${levelNote} Break is ready.`
+          )
 
           if (resolvedSubjectId) setMoveDonePromptOpen(true)
         },
@@ -315,12 +319,18 @@ export default function DashboardPage() {
         <AppHeader />
 
         <section className="space-y-2">
-          <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">Focus first</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">Focus first</p>
+            <Badge className="border border-orange-300/40 bg-orange-500/20 text-orange-100">
+              <Flame className="mr-1 h-3.5 w-3.5" />
+              {streak} day{streak === 1 ? '' : 's'} streak
+            </Badge>
+          </div>
           <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
             {phase === 'focus' ? 'Run your Pomodoro' : 'Take a break'}
           </h1>
           <p className="text-sm text-slate-400">
-            Level {getLevel(user?.totalXP ?? 0)} · {user?.totalXP ?? 0} XP · {user?.streak ?? 0} day streak
+            Level {getLevelFromXp(user?.totalXP ?? 0)} · {user?.totalXP ?? 0} XP
           </p>
         </section>
 
@@ -610,7 +620,7 @@ export default function DashboardPage() {
       </div>
 
       <AnimatePresence>
-        {isFocusMode && (
+        {(isFocusMode || forceCompletionFocus) && (
           <motion.div
             className="fixed inset-0 z-50 bg-[#040812]/86 backdrop-blur-2xl"
             initial={{ opacity: 0 }}
@@ -635,9 +645,10 @@ export default function DashboardPage() {
                   variant="outline"
                   className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
                   onClick={() => setIsFocusMode(false)}
+                  disabled={forceCompletionFocus}
                 >
                   <Minimize2 className="h-4 w-4" />
-                  Exit
+                  {forceCompletionFocus ? 'Complete action first' : 'Exit'}
                 </Button>
               </div>
 
@@ -786,10 +797,46 @@ function PomodoroRing({
 
       <div className="absolute text-center">
         {finished ? (
-          <div className="flex flex-col items-center gap-2">
-            <CheckCircle2 className="h-12 w-12 text-emerald-400" />
-            <p className="text-sm font-bold text-emerald-300">Complete</p>
-          </div>
+          <motion.div
+            className="relative flex flex-col items-center gap-2"
+            initial={{ scale: 0.92, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          >
+            <motion.div
+              className="absolute -inset-10 rounded-full bg-emerald-400/20 blur-2xl"
+              animate={{ scale: [1, 1.25, 1], opacity: [0.25, 0.55, 0.25] }}
+              transition={{ duration: 1.6, repeat: Infinity }}
+            />
+
+            {Array.from({ length: 10 }).map((_, index) => {
+              const angle = (index / 10) * Math.PI * 2
+              const x = Math.cos(angle) * 46
+              const y = Math.sin(angle) * 46
+              return (
+                <motion.span
+                  key={`done-particle-${index}`}
+                  className="absolute h-1.5 w-1.5 rounded-full bg-emerald-300"
+                  initial={{ x: 0, y: 0, opacity: 0.9, scale: 1 }}
+                  animate={{ x, y, opacity: 0, scale: 0.7 }}
+                  transition={{
+                    duration: 0.9,
+                    repeat: Infinity,
+                    delay: index * 0.05,
+                    ease: 'easeOut',
+                  }}
+                />
+              )
+            })}
+
+            <motion.div
+              animate={{ scale: [1, 1.12, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              <CheckCircle2 className="h-12 w-12 text-emerald-300" />
+            </motion.div>
+            <p className="text-sm font-bold text-emerald-200">Session Complete</p>
+          </motion.div>
         ) : (
           <>
             <p className={`font-mono font-black tracking-tight text-white ${large ? 'text-8xl' : 'text-6xl sm:text-7xl'}`}>
