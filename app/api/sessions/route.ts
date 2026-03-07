@@ -11,12 +11,26 @@ const CreateSessionSchema = z.object({
   rating: z.number().int().min(1).max(3),
 })
 
+function resolveTimezone(candidate: string | null, fallback: string) {
+  if (!candidate) return fallback
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: candidate }).format(new Date())
+    return candidate
+  } catch {
+    return fallback
+  }
+}
+
 export const POST = withAuth(
   async (req: NextRequest, { user }: AuthContext) => {
     try {
       const body = await req.json()
       const parsed = CreateSessionSchema.parse(body)
       const now = new Date()
+      const timezone = resolveTimezone(
+        req.headers.get('x-timezone'),
+        user.timezone || 'UTC'
+      )
       const xpAwarded = MODE_XP[parsed.mode]
       const previousLevel = getLevelFromXp(user.totalXP)
       const newTotalXP = user.totalXP + xpAwarded
@@ -24,7 +38,7 @@ export const POST = withAuth(
       const nextStreak = getNextStreak({
         currentStreak: user.streak,
         lastStudiedAt: user.lastStudiedAt,
-        timezone: user.timezone || 'UTC',
+        timezone,
         now,
       })
 
@@ -73,6 +87,7 @@ export const POST = withAuth(
             totalXP: newTotalXP,
             streak: nextStreak,
             lastStudiedAt: now,
+            ...(timezone !== user.timezone ? { timezone } : {}),
           },
         }),
       ])

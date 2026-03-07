@@ -10,6 +10,12 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    if (typeof window !== 'undefined') {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (tz) {
+        config.headers['x-timezone'] = tz
+      }
+    }
     return config
   },
   (error) => {
