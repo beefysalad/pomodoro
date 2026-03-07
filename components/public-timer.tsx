@@ -43,6 +43,7 @@ function formatTime(seconds: number) {
   const s = seconds % 60
   return `${pad(m)}:${pad(s)}`
 }
+const DEFAULT_TITLE = 'Tempo'
 
 export function PublicTimer({
   onRunningChange,
@@ -59,6 +60,9 @@ export function PublicTimer({
   const [finished, setFinished] = useState(false)
   const [completionMessage, setCompletionMessage] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const shouldNotifyCompletionRef = useRef(false)
+  const deadlineRef = useRef<number | null>(null)
+  const remainingRef = useRef(remaining)
 
   const config = MODE_CONFIG[mode]
   const total = config.seconds
@@ -71,29 +75,103 @@ export function PublicTimer({
   const circumference = 2 * Math.PI * ringRadius
 
   useEffect(() => {
+    remainingRef.current = remaining
+  }, [remaining])
+
+  useEffect(() => {
     if (!running) return
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!)
-          setRunning(false)
-          setFinished(true)
-          setCompletionMessage(
-            task.trim()
-              ? `"${task}" complete. Sign up to track your progress.`
-              : 'Session complete. Sign up to track your progress.'
-          )
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(intervalRef.current!)
-  }, [running, task, clerk])
+    const startRemaining = remainingRef.current
+    deadlineRef.current = Date.now() + startRemaining * 1000
+
+    const syncRemaining = () => {
+      if (!deadlineRef.current) return
+      const nextRemaining = Math.max(
+        0,
+        Math.ceil((deadlineRef.current - Date.now()) / 1000)
+      )
+
+      setRemaining((prev) => (prev === nextRemaining ? prev : nextRemaining))
+
+      if (nextRemaining === 0) {
+        clearInterval(intervalRef.current!)
+        deadlineRef.current = null
+        setRunning(false)
+        setFinished(true)
+        shouldNotifyCompletionRef.current = true
+        setCompletionMessage(
+          task.trim()
+            ? `"${task}" complete. Sign up to track your progress.`
+            : 'Session complete. Sign up to track your progress.'
+        )
+      }
+    }
+
+    syncRemaining()
+    intervalRef.current = setInterval(syncRemaining, 1000)
+
+    const onFocus = () => syncRemaining()
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncRemaining()
+      }
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      clearInterval(intervalRef.current!)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      deadlineRef.current = null
+    }
+  }, [running, task])
 
   useEffect(() => {
     onRunningChange?.(running)
   }, [running, onRunningChange])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (running && 'Notification' in window && Notification.permission === 'default') {
+      void Notification.requestPermission().catch(() => undefined)
+    }
+  }, [running])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    if (finished) {
+      document.title = `✅ Demo session done · ${DEFAULT_TITLE}`
+      return
+    }
+
+    if (running || remaining < total) {
+      document.title = `⏱ ${formatTime(Math.max(0, remaining))} · ${config.label} · ${DEFAULT_TITLE}`
+      return
+    }
+
+    document.title = DEFAULT_TITLE
+  }, [running, finished, remaining, total, config.label])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!finished || !shouldNotifyCompletionRef.current) return
+    shouldNotifyCompletionRef.current = false
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Pomodoro complete', {
+        body: 'Demo session finished. Jump back in or sign up to track progress.',
+      })
+    }
+  }, [finished])
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.title = DEFAULT_TITLE
+      }
+    }
+  }, [])
 
   const handlePlayPause = () => {
     if (finished) return
