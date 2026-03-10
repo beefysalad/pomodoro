@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 
 export type TimerMode = 'blitz' | 'focus' | 'deep'
@@ -52,8 +52,20 @@ type StoredTimerState = Pick<
 
 const STORAGE_KEY_PREFIX = 'tempo.timer.state.v1'
 const DEFAULT_FOCUS_SECONDS = 25 * 60
+const DEFAULT_TITLE = 'Tempo'
 
 const TimerContext = createContext<TimerContextValue | null>(null)
+const MODE_TITLE: Record<TimerMode, string> = {
+  blitz: 'Blitz',
+  focus: 'Focus',
+  deep: 'Deep',
+}
+
+function formatClock(seconds: number) {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
 
 function getDefaultState(): StoredTimerState {
   return {
@@ -87,7 +99,14 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [remaining, setRemaining] = useState(DEFAULT_FOCUS_SECONDS)
   const [hasStarted, setHasStarted] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const shouldNotifyCompletionRef = useRef(false)
+  const deadlineRef = useRef<number | null>(null)
+  const remainingRef = useRef(remaining)
   const storageKey = userId ? `${STORAGE_KEY_PREFIX}:${userId}` : null
+
+  useEffect(() => {
+    remainingRef.current = remaining
+  }, [remaining])
 
   useEffect(() => {
     if (!isLoaded) return
@@ -201,20 +220,95 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!running) return
-    const interval = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          setRunning(false)
-          setFinished(true)
-          setHasStarted(false)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const startRemaining = remainingRef.current
+    deadlineRef.current = Date.now() + startRemaining * 1000
 
-    return () => clearInterval(interval)
+    const syncRemaining = () => {
+      if (!deadlineRef.current) return
+      const nextRemaining = Math.max(
+        0,
+        Math.ceil((deadlineRef.current - Date.now()) / 1000)
+      )
+
+      setRemaining((prev) => (prev === nextRemaining ? prev : nextRemaining))
+
+      if (nextRemaining === 0) {
+        deadlineRef.current = null
+        setRunning(false)
+        setFinished(true)
+        setHasStarted(false)
+        shouldNotifyCompletionRef.current = true
+      }
+    }
+
+    syncRemaining()
+    const interval = setInterval(syncRemaining, 1000)
+    const onFocus = () => syncRemaining()
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncRemaining()
+      }
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      deadlineRef.current = null
+    }
   }, [running])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const canNotify = 'Notification' in window
+
+    if (running && canNotify && Notification.permission === 'default') {
+      void Notification.requestPermission().catch(() => undefined)
+    }
+  }, [running])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    if (finished) {
+      document.title = `✅ ${phase === 'focus' ? 'Session done' : 'Break done'} · ${DEFAULT_TITLE}`
+      return
+    }
+
+    if (running || hasStarted) {
+      const label = phase === 'focus' ? MODE_TITLE[mode] : 'Break'
+      document.title = `⏱ ${formatClock(Math.max(0, remaining))} · ${label} · ${DEFAULT_TITLE}`
+      return
+    }
+
+    document.title = DEFAULT_TITLE
+  }, [running, hasStarted, finished, remaining, phase, mode])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!finished || !shouldNotifyCompletionRef.current) return
+    shouldNotifyCompletionRef.current = false
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const isFocusDone = phase === 'focus'
+      const title = isFocusDone ? 'Pomodoro complete' : 'Break complete'
+      const body = isFocusDone
+        ? 'Great work. Save your session and keep momentum.'
+        : 'Break finished. Ready for your next focus session.'
+      new Notification(title, { body })
+    }
+  }, [finished, phase])
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.title = DEFAULT_TITLE
+      }
+    }
+  }, [])
 
   const value = useMemo<TimerContextValue>(
     () => ({
