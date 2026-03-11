@@ -24,7 +24,7 @@ export const GET = withAuth(
           topics: {
             orderBy: { position: 'asc' },
             include: {
-              sessions: { select: { duration: true } },
+              _count: { select: { sessions: true } },
             },
           },
         },
@@ -37,17 +37,11 @@ export const GET = withAuth(
         )
       }
 
-      const topicsWithStats = subject.topics.map((topic) => {
-        const totalDuration = topic.sessions.reduce(
-          (acc, session) => acc + session.duration,
-          0
-        )
-        return {
-          ...topic,
-          _count: { sessions: topic.sessions.length },
-          totalTime: totalDuration,
-        }
-      })
+      const topicsWithStats = subject.topics.map((topic) => ({
+        ...topic,
+        _count: { sessions: topic._count.sessions },
+        totalTime: topic.totalTime,
+      }))
 
       return NextResponse.json({
         subject: { ...subject, topics: topicsWithStats },
