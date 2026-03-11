@@ -491,6 +491,7 @@ export default function SubjectDetailPage() {
 
           <div className="flex items-center gap-2">
             <Button
+              id="tutorial-view-kanban"
               variant={viewMode === 'kanban' ? 'default' : 'outline'}
               className="h-9 px-4 text-sm font-semibold"
               onClick={() => setViewMode('kanban')}
@@ -498,6 +499,7 @@ export default function SubjectDetailPage() {
               Kanban
             </Button>
             <Button
+              id="tutorial-view-flashcards"
               variant={viewMode === 'flashcards' ? 'default' : 'outline'}
               className="h-9 px-4 text-sm font-semibold"
               onClick={() => setViewMode('flashcards')}
@@ -572,7 +574,7 @@ export default function SubjectDetailPage() {
         )}
 
         {viewMode === 'kanban' && (
-          <section className="grid gap-4 xl:grid-cols-4">
+          <section className="grid gap-4 xl:grid-cols-4" id="tutorial-kanban">
             {TOPIC_STATUSES.map((status) => (
               <div
                 key={status}
@@ -714,7 +716,10 @@ export default function SubjectDetailPage() {
         )}
 
         {viewMode === 'flashcards' && (
-          <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <section
+            className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
+            id="tutorial-flashcards"
+          >
             <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
               <CardContent className="space-y-5 px-4 py-5 sm:px-6">
                 <div className="space-y-4">
@@ -740,10 +745,16 @@ export default function SubjectDetailPage() {
                     )}
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {decks.slice(0, 3).map((deck) => (
+                  <div
+                    id="tutorial-flashcards-decks"
+                    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                  >
+                    {decks.slice(0, 3).map((deck, index) => (
                       <div
                         key={deck.id}
+                        id={
+                          index === 0 ? 'tutorial-flashcards-deck-first' : undefined
+                        }
                         role="button"
                         tabIndex={0}
                         onClick={() => {
@@ -858,6 +869,7 @@ export default function SubjectDetailPage() {
                         </Badge>
                       </div>
                       <Button
+                        id="tutorial-flashcards-start"
                         className="bg-violet-600 text-white hover:bg-violet-500"
                         onClick={() => {
                           setStudyIndex(0)

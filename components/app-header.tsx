@@ -15,11 +15,41 @@ import { cn } from '@/lib/utils'
 import { useUser } from '@/hooks/use-user'
 
 const NAV_LINKS = [
-  { href: '/dashboard', label: 'Dashboard', shortLabel: 'Home', icon: Home },
-  { href: '/stats', label: 'Stats', shortLabel: 'Stats', icon: BarChart3 },
-  { href: '/leaderboard', label: 'Leaderboard', shortLabel: 'Ranks', icon: Trophy },
-  { href: '/subjects', label: 'Subjects', shortLabel: 'Subjects', icon: BookOpen },
-  { href: '/settings', label: 'Settings', shortLabel: 'Settings', icon: SettingsIcon },
+  {
+    href: '/dashboard',
+    label: 'Dashboard',
+    shortLabel: 'Home',
+    icon: Home,
+    id: 'tutorial-nav-dashboard',
+  },
+  {
+    href: '/stats',
+    label: 'Stats',
+    shortLabel: 'Stats',
+    icon: BarChart3,
+    id: 'tutorial-nav-stats',
+  },
+  {
+    href: '/leaderboard',
+    label: 'Leaderboard',
+    shortLabel: 'Ranks',
+    icon: Trophy,
+    id: 'tutorial-nav-leaderboard',
+  },
+  {
+    href: '/subjects',
+    label: 'Subjects',
+    shortLabel: 'Subjects',
+    icon: BookOpen,
+    id: 'tutorial-nav-subjects',
+  },
+  {
+    href: '/settings',
+    label: 'Settings',
+    shortLabel: 'Settings',
+    icon: SettingsIcon,
+    id: 'tutorial-nav-settings',
+  },
 ]
 
 export function AppHeader() {
@@ -70,6 +100,8 @@ export function AppHeader() {
               return (
                 <Link
                   key={link.href}
+                  id={link.id}
+                  data-tutorial-id={link.id}
                   href={link.href}
                   className={cn(
                     'rounded-md px-3.5 py-1.5 text-sm font-semibold whitespace-nowrap transition',
@@ -97,6 +129,7 @@ export function AppHeader() {
             return (
               <Link
                 key={link.href}
+                data-tutorial-id={link.id}
                 href={link.href}
                 className={cn(
                   'flex flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition',

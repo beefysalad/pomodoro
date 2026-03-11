@@ -8,6 +8,7 @@ import { dark, shadcn } from '@clerk/themes'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'sonner'
 import { Analytics } from '@vercel/analytics/next'
+import { TutorialAutoStart } from '@/components/tutorial-auto-start'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -64,10 +65,8 @@ export default function RootLayout({
           dividerLine: 'bg-white/10',
           dividerText: 'text-slate-400',
           formResendCodeLink: 'text-cyan-300 hover:text-cyan-200',
-          otpCodeFieldInput:
-            'border border-white/15 bg-white/8 text-slate-100',
-          footer:
-            'border-t border-white/10 bg-[#0d1628]/96 text-slate-300',
+          otpCodeFieldInput: 'border border-white/15 bg-white/8 text-slate-100',
+          footer: 'border-t border-white/10 bg-[#0d1628]/96 text-slate-300',
           footerAction: 'text-slate-300',
           footerActionLink: 'text-cyan-300 hover:text-cyan-200',
           formFieldSuccessText: 'text-emerald-300',
@@ -94,6 +93,7 @@ export default function RootLayout({
             <QueryProvider>
               <TimerProvider>
                 {children}
+                <TutorialAutoStart />
                 <Toaster
                   position="bottom-center"
                   expand

@@ -32,7 +32,12 @@ import { TOPIC_STATUS_LABEL } from '@/lib/topic-status'
 
 const MODE_META: Record<
   Mode,
-  { label: string; xp: number; color: string; subtitle: (minutes: number) => string }
+  {
+    label: string
+    xp: number
+    color: string
+    subtitle: (minutes: number) => string
+  }
 > = {
   blitz: {
     label: 'Blitz',
@@ -62,7 +67,10 @@ const DEFAULT_TIMER_MINUTES = {
   longBreak: 10,
 } as const
 
-const BREAK_SECONDS = (shortBreakMinutes: number, longBreakMinutes: number) => ({
+const BREAK_SECONDS = (
+  shortBreakMinutes: number,
+  longBreakMinutes: number
+) => ({
   short: shortBreakMinutes * 60,
   long: longBreakMinutes * 60,
 })
@@ -187,7 +195,10 @@ export default function DashboardPage() {
   }, [subjects, activeSubjectId])
 
   const { data: activeSubject } = useSubjectTopics(resolvedSubjectId)
-  const topics = useMemo(() => activeSubject?.topics ?? [], [activeSubject?.topics])
+  const topics = useMemo(
+    () => activeSubject?.topics ?? [],
+    [activeSubject?.topics]
+  )
 
   const resolvedTopicId = useMemo(() => {
     if (!topics.length) return ''
@@ -346,441 +357,493 @@ export default function DashboardPage() {
   return (
     <>
       <div className="relative min-h-screen overflow-hidden bg-[#070b16] text-slate-100">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-[-120px] right-[-120px] h-[380px] w-[380px] rounded-full bg-cyan-500/10 blur-[130px]" />
-        <div className="absolute bottom-[-120px] left-[-120px] h-[360px] w-[360px] rounded-full bg-violet-600/14 blur-[130px]" />
-      </div>
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-[-120px] right-[-120px] h-[380px] w-[380px] rounded-full bg-cyan-500/10 blur-[130px]" />
+          <div className="absolute bottom-[-120px] left-[-120px] h-[360px] w-[360px] rounded-full bg-violet-600/14 blur-[130px]" />
+        </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
-        <AppHeader />
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
+          <AppHeader />
 
-        <section className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">Focus first</p>
-            <Badge className="border border-orange-300/40 bg-orange-500/20 text-orange-100">
-              <Flame className="mr-1 h-3.5 w-3.5" />
-              {streak} day{streak === 1 ? '' : 's'} streak
-            </Badge>
-          </div>
-          <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-            {phase === 'focus' ? 'Run your Pomodoro' : 'Take a break'}
-          </h1>
-          <p className="text-sm text-slate-400">
-            Level {getLevelFromXp(user?.totalXP ?? 0)} · {user?.totalXP ?? 0} XP
-          </p>
-        </section>
-
-        {!!pageMessage && (
-          <section className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
-            {pageMessage}
+          <section className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">
+                Focus first
+              </p>
+              <Badge className="border border-orange-300/40 bg-orange-500/20 text-orange-100">
+                <Flame className="mr-1 h-3.5 w-3.5" />
+                {streak} day{streak === 1 ? '' : 's'} streak
+              </Badge>
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+              {phase === 'focus' ? 'Run your Pomodoro' : 'Take a break'}
+            </h1>
+            <p className="text-sm text-slate-400">
+              Level {getLevelFromXp(user?.totalXP ?? 0)} · {user?.totalXP ?? 0}{' '}
+              XP
+            </p>
           </section>
-        )}
 
-        <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {(Object.keys(modeConfig) as Mode[]).map((entryMode) => {
-                const option = modeConfig[entryMode]
-                const active = mode === entryMode
+          {!!pageMessage && (
+            <section className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+              {pageMessage}
+            </section>
+          )}
 
-                return (
+          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div
+                className="flex flex-wrap items-center gap-2"
+                id="tutorial-modes"
+              >
+                {(Object.keys(modeConfig) as Mode[]).map((entryMode) => {
+                  const option = modeConfig[entryMode]
+                  const active = mode === entryMode
+
+                  return (
+                    <button
+                      key={entryMode}
+                      onClick={() => onChangeMode(entryMode)}
+                      className="rounded-xl border px-3 py-2 text-left transition-all"
+                      style={
+                        active
+                          ? {
+                              borderColor: `${option.color}70`,
+                              background: `${option.color}22`,
+                              boxShadow: `0 0 20px ${option.color}30`,
+                            }
+                          : {
+                              borderColor: 'rgba(255,255,255,0.14)',
+                              background: 'rgba(255,255,255,0.03)',
+                            }
+                      }
+                      disabled={running || pendingReview}
+                    >
+                      <p className="text-sm leading-tight font-semibold text-white">
+                        {option.label}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {option.subtitle(option.minutes)}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1 sm:flex">
                   <button
-                    key={entryMode}
-                    onClick={() => onChangeMode(entryMode)}
-                    className="rounded-xl border px-3 py-2 text-left transition-all"
-                    style={
-                      active
-                        ? {
-                            borderColor: `${option.color}70`,
-                            background: `${option.color}22`,
-                            boxShadow: `0 0 20px ${option.color}30`,
-                          }
-                        : {
-                            borderColor: 'rgba(255,255,255,0.14)',
-                            background: 'rgba(255,255,255,0.03)',
-                          }
-                    }
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      breakLength === 'short'
+                        ? 'bg-white/12 text-white'
+                        : 'text-slate-300 hover:bg-white/8'
+                    }`}
+                    onClick={() => setBreakLength('short')}
                     disabled={running || pendingReview}
                   >
-                    <p className="text-sm leading-tight font-semibold text-white">{option.label}</p>
-                    <p className="text-[11px] text-slate-400">{option.subtitle(option.minutes)}</p>
+                    Short breaks
                   </button>
-                )
-              })}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1 sm:flex">
-                <button
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                    breakLength === 'short'
-                      ? 'bg-white/12 text-white'
-                      : 'text-slate-300 hover:bg-white/8'
-                  }`}
-                  onClick={() => setBreakLength('short')}
-                  disabled={running || pendingReview}
-                >
-                  Short breaks
-                </button>
-                <button
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                    breakLength === 'long'
-                      ? 'bg-white/12 text-white'
-                      : 'text-slate-300 hover:bg-white/8'
-                  }`}
-                  onClick={() => setBreakLength('long')}
-                  disabled={running || pendingReview}
-                >
-                  Long breaks
-                </button>
-              </div>
-              <Button
-                variant="outline"
-                className="h-10 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                onClick={() => setIsFocusMode(true)}
-              >
-                <Maximize2 className="h-4 w-4" />
-                Focus mode
-              </Button>
-              <Link href="/stats">
+                  <button
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      breakLength === 'long'
+                        ? 'bg-white/12 text-white'
+                        : 'text-slate-300 hover:bg-white/8'
+                    }`}
+                    onClick={() => setBreakLength('long')}
+                    disabled={running || pendingReview}
+                  >
+                    Long breaks
+                  </button>
+                </div>
                 <Button
                   variant="outline"
                   className="h-10 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                  onClick={() => setIsFocusMode(true)}
+                  id="tutorial-focus-button"
                 >
-                  View stats
+                  <Maximize2 className="h-4 w-4" />
+                  Focus mode
                 </Button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="mb-5 grid gap-3 md:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                Subject
-              </label>
-              <select
-                value={resolvedSubjectId}
-                onChange={(event) => setActiveSubjectId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white outline-none transition focus:border-violet-400/50"
-                disabled={!subjects.length || phase === 'break'}
-              >
-                {!subjects.length ? (
-                  <option value="">No subjects yet</option>
-                ) : (
-                  subjects.map((subject) => (
-                    <option
-                      key={subject.id}
-                      value={subject.id}
-                      className="bg-slate-900 text-white"
-                    >
-                      {subject.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                Topic
-              </label>
-              <select
-                value={resolvedTopicId}
-                onChange={(event) => setSelectedTopicId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white outline-none transition focus:border-violet-400/50"
-                disabled={!topics.length || phase === 'break'}
-              >
-                {!topics.length ? (
-                  <option value="">No topics yet</option>
-                ) : (
-                  topics.map((topic) => (
-                    <option
-                      key={topic.id}
-                      value={topic.id}
-                      className="bg-slate-900 text-white"
-                    >
-                      {topic.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                Status
-              </label>
-              <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-slate-200">
-                {phase === 'break'
-                  ? 'Break'
-                  : currentTopic
-                    ? TOPIC_STATUS_LABEL[currentTopic.status]
-                    : 'No topic selected'}
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-5 flex items-center gap-2 sm:hidden">
-            <button
-              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                breakLength === 'short'
-                  ? 'border-white/20 bg-white/12 text-white'
-                  : 'border-white/10 bg-white/5 text-slate-300'
-              }`}
-              onClick={() => setBreakLength('short')}
-              disabled={running || pendingReview}
-            >
-              Short breaks
-            </button>
-            <button
-              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                breakLength === 'long'
-                  ? 'border-white/20 bg-white/12 text-white'
-                  : 'border-white/10 bg-white/5 text-slate-300'
-              }`}
-              onClick={() => setBreakLength('long')}
-              disabled={running || pendingReview}
-            >
-              Long breaks
-            </button>
-          </div>
-
-          <div className="flex flex-col items-center gap-6 py-2 sm:py-4">
-            <PomodoroRing
-              color={phase === 'focus' ? activeMode.color : '#22c55e'}
-              finished={finished}
-              progress={progress}
-              remaining={timerRemaining}
-            />
-
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Badge className="border border-white/10 bg-white/[0.04] text-slate-300">
-                {phase === 'focus'
-                  ? `${activeMode.label} session`
-                  : `${Math.round(breakSeconds[breakLength] / 60)} min ${breakLength} break`}
-              </Badge>
-              <Badge className="bg-violet-500/20 text-violet-200">+{activeMode.xp} XP focus reward</Badge>
-            </div>
-
-            {!pendingReview ? (
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button
-                  variant="outline"
-                  className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                  onClick={onResetTimer}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Reset
-                </Button>
-
-                {phase === 'break' && (
+                <Link href="/stats" id="tutorial-stats">
                   <Button
                     variant="outline"
-                    className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                    onClick={onSkipBreak}
+                    className="h-10 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
                   >
-                    Skip break
+                    View stats
                   </Button>
-                )}
-
-                <Button
-                  className="h-11 font-bold text-white"
-                  onClick={onPlayPause}
-                  disabled={completeSession.isPending || (phase === 'focus' && !resolvedTopicId)}
-                  style={{
-                    backgroundColor: phase === 'focus' ? activeMode.color : '#22c55e',
-                    boxShadow: `0 0 28px ${phase === 'focus' ? activeMode.color : '#22c55e'}58`,
-                  }}
-                >
-                  {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  {running
-                    ? 'Pause'
-                    : finished
-                      ? 'Done'
-                      : timerRemaining === totalSeconds
-                        ? phase === 'focus'
-                          ? 'Start session'
-                          : 'Start break'
-                        : 'Resume'}
-                </Button>
+                </Link>
               </div>
-            ) : (
-              <div className="w-full max-w-xl rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-center text-sm font-semibold text-white">How was that session?</p>
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map((score) => (
-                    <button
-                      key={score}
-                      onClick={() => setRating(score)}
-                      className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
-                        rating === score
-                          ? 'border-violet-400/70 bg-violet-500/20 text-violet-100'
-                          : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                      }`}
-                    >
-                      {score === 1 ? 'Hard' : score === 2 ? 'Okay' : 'Great'}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3 flex flex-wrap justify-center gap-2">
-                  <Button
-                    onClick={onSaveSession}
-                    disabled={completeSession.isPending}
-                    className="bg-violet-600 text-white hover:bg-violet-500"
-                  >
-                    <Zap className="h-4 w-4" />
-                    Save session
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={onResetTimer}
-                    className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                  >
-                    Discard
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300">
-          <span className="inline-flex items-center gap-1.5">
-            <Timer className="h-3.5 w-3.5 text-cyan-300" />
-            Dashboard is timer-first. Detailed cards are now in Stats.
-          </span>
-          <Link href="/subjects" className="text-cyan-300 transition hover:text-cyan-200">
-            Manage subjects and topics
-          </Link>
-        </section>
-      </div>
-
-      <AnimatePresence>
-        {(isFocusMode || forceCompletionFocus) && (
-          <motion.div
-            className="fixed inset-0 z-50 bg-[#040812]/86 backdrop-blur-2xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute inset-0 bg-[#030712]/55" />
-              <div className="absolute top-[-140px] left-1/2 h-[440px] w-[440px] -translate-x-1/2 rounded-full bg-violet-600/16 blur-[130px]" />
-              <div className="absolute bottom-[-160px] right-[-120px] h-[420px] w-[420px] rounded-full bg-cyan-500/12 blur-[130px]" />
             </div>
 
-            <div className="relative z-10 flex h-full flex-col px-4 py-6 sm:px-6 lg:px-10">
-              <div className="mb-8 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">Focus mode</p>
-                  <p className="mt-1 text-sm text-slate-300">
-                    {phase === 'focus' ? activeMode.label : 'Break'} · {running ? 'In progress' : 'Ready'}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
-                  onClick={() => setIsFocusMode(false)}
-                  disabled={forceCompletionFocus}
+            <div className="mb-5 grid gap-3 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  Subject
+                </label>
+                <select
+                  value={resolvedSubjectId}
+                  onChange={(event) => setActiveSubjectId(event.target.value)}
+                  className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white transition outline-none focus:border-violet-400/50"
+                  disabled={!subjects.length || phase === 'break'}
                 >
-                  <Minimize2 className="h-4 w-4" />
-                  {forceCompletionFocus ? 'Complete action first' : 'Exit'}
-                </Button>
+                  {!subjects.length ? (
+                    <option value="">No subjects yet</option>
+                  ) : (
+                    subjects.map((subject) => (
+                      <option
+                        key={subject.id}
+                        value={subject.id}
+                        className="bg-slate-900 text-white"
+                      >
+                        {subject.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
 
-              <div className="flex flex-1 flex-col items-center justify-center gap-8">
+              <div>
+                <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  Topic
+                </label>
+                <select
+                  value={resolvedTopicId}
+                  onChange={(event) => setSelectedTopicId(event.target.value)}
+                  className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white transition outline-none focus:border-violet-400/50"
+                  disabled={!topics.length || phase === 'break'}
+                >
+                  {!topics.length ? (
+                    <option value="">No topics yet</option>
+                  ) : (
+                    topics.map((topic) => (
+                      <option
+                        key={topic.id}
+                        value={topic.id}
+                        className="bg-slate-900 text-white"
+                      >
+                        {topic.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  Status
+                </label>
+                <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-slate-200">
+                  {phase === 'break'
+                    ? 'Break'
+                    : currentTopic
+                      ? TOPIC_STATUS_LABEL[currentTopic.status]
+                      : 'No topic selected'}
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-5 flex items-center gap-2 sm:hidden">
+              <button
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                  breakLength === 'short'
+                    ? 'border-white/20 bg-white/12 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-300'
+                }`}
+                onClick={() => setBreakLength('short')}
+                disabled={running || pendingReview}
+              >
+                Short breaks
+              </button>
+              <button
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                  breakLength === 'long'
+                    ? 'border-white/20 bg-white/12 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-300'
+                }`}
+                onClick={() => setBreakLength('long')}
+                disabled={running || pendingReview}
+              >
+                Long breaks
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center gap-6 py-2 sm:py-4">
+              <div id="tutorial-timer">
                 <PomodoroRing
                   color={phase === 'focus' ? activeMode.color : '#22c55e'}
                   finished={finished}
                   progress={progress}
                   remaining={timerRemaining}
-                  large
                 />
+              </div>
 
-                {!!quote && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                    className="max-w-2xl rounded-2xl border border-white/10 bg-gradient-to-r from-white/8 via-white/4 to-transparent px-5 py-4 text-center text-sm text-slate-200 shadow-[0_0_30px_rgba(15,23,42,0.35)]"
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Badge className="border border-white/10 bg-white/[0.04] text-slate-300">
+                  {phase === 'focus'
+                    ? `${activeMode.label} session`
+                    : `${Math.round(breakSeconds[breakLength] / 60)} min ${breakLength} break`}
+                </Badge>
+                <Badge className="bg-violet-500/20 text-violet-200">
+                  +{activeMode.xp} XP focus reward
+                </Badge>
+              </div>
+
+              {!pendingReview ? (
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                    onClick={onResetTimer}
                   >
-                    <p className="text-[11px] font-semibold tracking-[0.18em] text-cyan-300 uppercase">
-                      Focus mantra
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-white">
-                      &ldquo;{quote.text}&rdquo;
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">— {quote.author}</p>
-                  </motion.div>
-                )}
+                    <RotateCcw className="h-4 w-4" />
+                    Reset
+                  </Button>
 
-                {!pendingReview ? (
-                  <div className="flex flex-wrap items-center justify-center gap-2">
+                  {phase === 'break' && (
                     <Button
                       variant="outline"
                       className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                      onClick={onResetTimer}
+                      onClick={onSkipBreak}
                     >
-                      <RotateCcw className="h-4 w-4" />
-                      Reset
+                      Skip break
                     </Button>
-                    {phase === 'break' && (
+                  )}
+
+                  <Button
+                    className="h-11 font-bold text-white"
+                    onClick={onPlayPause}
+                    disabled={
+                      completeSession.isPending ||
+                      (phase === 'focus' && !resolvedTopicId)
+                    }
+                    style={{
+                      backgroundColor:
+                        phase === 'focus' ? activeMode.color : '#22c55e',
+                      boxShadow: `0 0 28px ${phase === 'focus' ? activeMode.color : '#22c55e'}58`,
+                    }}
+                  >
+                    {running ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    {running
+                      ? 'Pause'
+                      : finished
+                        ? 'Done'
+                        : timerRemaining === totalSeconds
+                          ? phase === 'focus'
+                            ? 'Start session'
+                            : 'Start break'
+                          : 'Resume'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="w-full max-w-xl rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <p className="text-center text-sm font-semibold text-white">
+                    How was that session?
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map((score) => (
+                      <button
+                        key={score}
+                        onClick={() => setRating(score)}
+                        className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
+                          rating === score
+                            ? 'border-violet-400/70 bg-violet-500/20 text-violet-100'
+                            : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+                        }`}
+                      >
+                        {score === 1 ? 'Hard' : score === 2 ? 'Okay' : 'Great'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    <Button
+                      onClick={onSaveSession}
+                      disabled={completeSession.isPending}
+                      className="bg-violet-600 text-white hover:bg-violet-500"
+                    >
+                      <Zap className="h-4 w-4" />
+                      Save session
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={onResetTimer}
+                      className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                    >
+                      Discard
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300">
+            <span className="inline-flex items-center gap-1.5">
+              <Timer className="h-3.5 w-3.5 text-cyan-300" />
+              Dashboard is timer-first. Detailed cards are now in Stats.
+            </span>
+            <Link
+              href="/subjects"
+              id="tutorial-subjects"
+              className="text-cyan-300 transition hover:text-cyan-200"
+            >
+              Manage subjects and topics
+            </Link>
+          </section>
+        </div>
+
+        <AnimatePresence>
+          {(isFocusMode || forceCompletionFocus) && (
+            <motion.div
+              className="fixed inset-0 z-50 bg-[#040812]/86 backdrop-blur-2xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute inset-0 bg-[#030712]/55" />
+                <div className="absolute top-[-140px] left-1/2 h-[440px] w-[440px] -translate-x-1/2 rounded-full bg-violet-600/16 blur-[130px]" />
+                <div className="absolute right-[-120px] bottom-[-160px] h-[420px] w-[420px] rounded-full bg-cyan-500/12 blur-[130px]" />
+              </div>
+
+              <div className="relative z-10 flex h-full flex-col px-4 py-6 sm:px-6 lg:px-10">
+                <div className="mb-8 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">
+                      Focus mode
+                    </p>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {phase === 'focus' ? activeMode.label : 'Break'} ·{' '}
+                      {running ? 'In progress' : 'Ready'}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
+                    onClick={() => setIsFocusMode(false)}
+                    disabled={forceCompletionFocus}
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                    {forceCompletionFocus ? 'Complete action first' : 'Exit'}
+                  </Button>
+                </div>
+
+                <div className="flex flex-1 flex-col items-center justify-center gap-8">
+                  <PomodoroRing
+                    color={phase === 'focus' ? activeMode.color : '#22c55e'}
+                    finished={finished}
+                    progress={progress}
+                    remaining={timerRemaining}
+                    large
+                  />
+
+                  {!!quote && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      className="max-w-2xl rounded-2xl border border-white/10 bg-gradient-to-r from-white/8 via-white/4 to-transparent px-5 py-4 text-center text-sm text-slate-200 shadow-[0_0_30px_rgba(15,23,42,0.35)]"
+                    >
+                      <p className="text-[11px] font-semibold tracking-[0.18em] text-cyan-300 uppercase">
+                        Focus mantra
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-white">
+                        &ldquo;{quote.text}&rdquo;
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        — {quote.author}
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {!pendingReview ? (
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       <Button
                         variant="outline"
                         className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                        onClick={onSkipBreak}
+                        onClick={onResetTimer}
                       >
-                        Skip break
+                        <RotateCcw className="h-4 w-4" />
+                        Reset
                       </Button>
-                    )}
-                    <Button
-                      className="h-11 font-bold text-white"
-                      onClick={onPlayPause}
-                      disabled={completeSession.isPending || (phase === 'focus' && !resolvedTopicId)}
-                      style={{
-                        backgroundColor: phase === 'focus' ? activeMode.color : '#22c55e',
-                        boxShadow: `0 0 30px ${phase === 'focus' ? activeMode.color : '#22c55e'}5f`,
-                      }}
-                    >
-                      {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      {running ? 'Pause' : timerRemaining === totalSeconds ? 'Start' : 'Resume'}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="w-full max-w-xl rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                    <p className="text-center text-sm font-semibold text-white">How was that session?</p>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      {[1, 2, 3].map((score) => (
-                        <button
-                          key={score}
-                          onClick={() => setRating(score)}
-                          className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
-                            rating === score
-                              ? 'border-violet-400/70 bg-violet-500/20 text-violet-100'
-                              : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                          }`}
+                      {phase === 'break' && (
+                        <Button
+                          variant="outline"
+                          className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                          onClick={onSkipBreak}
                         >
-                          {score === 1 ? 'Hard' : score === 2 ? 'Okay' : 'Great'}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex justify-center gap-2">
+                          Skip break
+                        </Button>
+                      )}
                       <Button
-                        onClick={onSaveSession}
-                        disabled={completeSession.isPending}
-                        className="bg-violet-600 text-white hover:bg-violet-500"
+                        className="h-11 font-bold text-white"
+                        onClick={onPlayPause}
+                        disabled={
+                          completeSession.isPending ||
+                          (phase === 'focus' && !resolvedTopicId)
+                        }
+                        style={{
+                          backgroundColor:
+                            phase === 'focus' ? activeMode.color : '#22c55e',
+                          boxShadow: `0 0 30px ${phase === 'focus' ? activeMode.color : '#22c55e'}5f`,
+                        }}
                       >
-                        <Zap className="h-4 w-4" />
-                        Save session
+                        {running ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                        {running
+                          ? 'Pause'
+                          : timerRemaining === totalSeconds
+                            ? 'Start'
+                            : 'Resume'}
                       </Button>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-full max-w-xl rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                      <p className="text-center text-sm font-semibold text-white">
+                        How was that session?
+                      </p>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        {[1, 2, 3].map((score) => (
+                          <button
+                            key={score}
+                            onClick={() => setRating(score)}
+                            className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
+                              rating === score
+                                ? 'border-violet-400/70 bg-violet-500/20 text-violet-100'
+                                : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+                            }`}
+                          >
+                            {score === 1
+                              ? 'Hard'
+                              : score === 2
+                                ? 'Okay'
+                                : 'Great'}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex justify-center gap-2">
+                        <Button
+                          onClick={onSaveSession}
+                          disabled={completeSession.isPending}
+                          className="bg-violet-600 text-white hover:bg-violet-500"
+                        >
+                          <Zap className="h-4 w-4" />
+                          Save session
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <ConfirmActionDialog
@@ -821,7 +884,11 @@ function PomodoroRing({
       <motion.div
         className={`absolute rounded-full ${large ? 'h-[320px] w-[320px] blur-[95px]' : 'h-[240px] w-[240px] blur-[78px]'}`}
         style={{ background: `${color}2a` }}
-        animate={finished ? { opacity: 0.4, scale: 1 } : { opacity: [0.42, 0.8, 0.42], scale: [1, 1.09, 1] }}
+        animate={
+          finished
+            ? { opacity: 0.4, scale: 1 }
+            : { opacity: [0.42, 0.8, 0.42], scale: [1, 1.09, 1] }
+        }
         transition={{ duration: 2.8, repeat: Infinity }}
       />
 
@@ -888,14 +955,20 @@ function PomodoroRing({
             >
               <CheckCircle2 className="h-12 w-12 text-emerald-300" />
             </motion.div>
-            <p className="text-sm font-bold text-emerald-200">Session Complete</p>
+            <p className="text-sm font-bold text-emerald-200">
+              Session Complete
+            </p>
           </motion.div>
         ) : (
           <>
-            <p className={`font-mono font-black tracking-tight text-white ${large ? 'text-8xl' : 'text-6xl sm:text-7xl'}`}>
+            <p
+              className={`font-mono font-black tracking-tight text-white ${large ? 'text-8xl' : 'text-6xl sm:text-7xl'}`}
+            >
               {formatClock(remaining)}
             </p>
-            <p className="mt-1 text-xs tracking-[0.2em] text-slate-500 uppercase">remaining</p>
+            <p className="mt-1 text-xs tracking-[0.2em] text-slate-500 uppercase">
+              remaining
+            </p>
           </>
         )}
       </div>

@@ -35,6 +35,9 @@ export const PATCH = withAuth(
           ...(parsed.longBreakMinutes !== undefined && {
             longBreakMinutes: parsed.longBreakMinutes,
           }),
+          ...(parsed.hasSeenTutorial !== undefined && {
+            hasSeenTutorial: parsed.hasSeenTutorial,
+          }),
         },
       })
 

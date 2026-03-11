@@ -265,13 +265,17 @@ export default function StatsPage() {
             value={formatDuration(stats.totalSeconds)}
           />
           <StatCard
+            id="tutorial-stats-sessions"
             icon={BarChart3}
             label="Sessions"
             value={String(stats.totalSessions)}
           />
         </section>
 
-        <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+        <Card
+          id="tutorial-stats-level"
+          className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+        >
           <CardContent className="space-y-3 px-4 py-5 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-bold text-white">Level progress</h2>
@@ -289,7 +293,10 @@ export default function StatsPage() {
           </CardContent>
         </Card>
 
-        <section className="rounded-2xl border border-orange-300/35 bg-gradient-to-r from-orange-500/22 via-amber-500/12 to-transparent px-4 py-3 sm:px-5">
+        <section
+          id="tutorial-stats-streak"
+          className="rounded-2xl border border-orange-300/35 bg-gradient-to-r from-orange-500/22 via-amber-500/12 to-transparent px-4 py-3 sm:px-5"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="rounded-xl border border-orange-300/45 bg-orange-500/20 p-2">
@@ -345,7 +352,10 @@ export default function StatsPage() {
 
         <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
           <div className="space-y-6">
-            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+            <Card
+              id="tutorial-stats-graph"
+              className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+            >
               <CardContent className="space-y-4 px-4 py-5 sm:px-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-white">
@@ -696,16 +706,21 @@ export default function StatsPage() {
 }
 
 function StatCard({
+  id,
   icon: Icon,
   label,
   value,
 }: {
+  id?: string
   icon: React.ComponentType<{ className?: string }>
   label: string
   value: string
 }) {
   return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+    <Card
+      id={id}
+      className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+    >
       <CardContent className="flex items-center justify-between px-4 py-4 sm:px-5">
         <div>
           <p className="text-xs text-slate-400">{label}</p>
