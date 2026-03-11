@@ -64,7 +64,8 @@ export default function SpotifyPocPage() {
             Pomodoro soundtrack integration
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Proof-of-concept OAuth wiring for connecting Spotify to your study sessions.
+            Proof-of-concept OAuth wiring for connecting Spotify to your study
+            sessions.
           </p>
         </section>
 
@@ -74,7 +75,9 @@ export default function SpotifyPocPage() {
               <h2 className="text-lg font-bold text-white">Connection</h2>
 
               {loading ? (
-                <p className="text-sm text-slate-400">Checking Spotify status...</p>
+                <p className="text-sm text-slate-400">
+                  Checking Spotify status...
+                </p>
               ) : status.connected ? (
                 <div className="space-y-2 text-sm text-slate-200">
                   <p className="inline-flex items-center gap-2 text-green-300">
@@ -82,20 +85,28 @@ export default function SpotifyPocPage() {
                     Connected
                   </p>
                   <p>
-                    Account: <span className="font-semibold">{status.profile?.displayName}</span>
+                    Account:{' '}
+                    <span className="font-semibold">
+                      {status.profile?.displayName}
+                    </span>
                   </p>
                   <p>Plan: {status.profile?.product ?? 'Unknown'}</p>
                 </div>
               ) : (
                 <p className="text-sm text-slate-300">
-                  Not connected. Link Spotify to control playback during focus sessions.
+                  Not connected. Link Spotify to control playback during focus
+                  sessions.
                 </p>
               )}
 
               <div className="flex items-center gap-2">
-                <Button onClick={onConnect} className="bg-green-600 text-white hover:bg-green-500">
+                <Button
+                  disabled={true}
+                  onClick={onConnect}
+                  className="bg-green-600 text-white hover:bg-green-500"
+                >
                   <Music2 className="h-4 w-4" />
-                  Connect Spotify
+                  Connect Spotifyz
                 </Button>
                 <Button
                   variant="outline"
@@ -122,7 +133,8 @@ export default function SpotifyPocPage() {
                   Auto-pause music when timer ends
                 </p>
                 <p className="text-slate-400">
-                  Wire these to your timer start/finish actions using the access token from this POC.
+                  Wire these to your timer start/finish actions using the access
+                  token from this POC.
                 </p>
               </div>
             </CardContent>
