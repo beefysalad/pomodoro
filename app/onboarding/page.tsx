@@ -3,13 +3,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueries } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, Variants } from 'framer-motion'
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   Flame,
+  GalleryVerticalEnd,
+  LayersIcon,
   Rocket,
+  Timer,
   Trophy,
   Zap,
 } from 'lucide-react'
@@ -24,14 +28,95 @@ import { useUpdateUser, useUser } from '@/hooks/use-user'
 import { getTopics } from '@/lib/api/topics'
 import { getLevelFromXp } from '@/lib/progression'
 
-const STEP_TITLES = [
-  'Welcome',
-  'Create Subject',
-  'Add Topic',
-  'Timer Setup',
-  'How Tempo Works',
-  'Finish Setup',
+const STEPS = [
+  { id: 'welcome', label: 'Welcome' },
+  { id: 'subject', label: 'Subject' },
+  { id: 'topic', label: 'Topic' },
+  { id: 'timer', label: 'Timer' },
+  { id: 'features', label: 'Features' },
+  { id: 'done', label: 'Done' },
 ] as const
+
+const FEATURES = [
+  {
+    icon: Zap,
+    title: 'XP + Levels',
+    description: 'Finish sessions to earn XP and level up over time.',
+    color: 'from-yellow-500/20 to-orange-500/10 border-yellow-500/30',
+    iconColor: 'text-yellow-400',
+  },
+  {
+    icon: Flame,
+    title: 'Daily Streak',
+    description: 'Study every day to build momentum you can feel.',
+    color: 'from-orange-500/20 to-red-500/10 border-orange-500/30',
+    iconColor: 'text-orange-400',
+  },
+  {
+    icon: Trophy,
+    title: 'Achievements',
+    description: 'Unlock milestones for consistency and deep focus.',
+    color: 'from-amber-500/20 to-yellow-500/10 border-amber-500/30',
+    iconColor: 'text-amber-400',
+  },
+  {
+    icon: LayersIcon,
+    title: 'Flashcard Decks',
+    description:
+      "Create decks per subject and quiz yourself anytime. Set up whenever you're ready.",
+    color: 'from-violet-500/20 to-purple-500/10 border-violet-500/30',
+    iconColor: 'text-violet-400',
+    badge: 'New',
+  },
+  {
+    icon: Rocket,
+    title: 'Quests',
+    description: 'Daily quests guide your next move for fast progress.',
+    color: 'from-cyan-500/20 to-blue-500/10 border-cyan-500/30',
+    iconColor: 'text-cyan-400',
+  },
+  {
+    icon: GalleryVerticalEnd,
+    title: 'Leaderboard',
+    description: 'See where you stack up against other learners weekly.',
+    color: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',
+    iconColor: 'text-emerald-400',
+  },
+]
+
+const TIMER_MODES = [
+  {
+    key: 'blitz',
+    label: 'Blitz',
+    hint: '5–120 min',
+    desc: 'Quick bursts',
+    emoji: '⚡',
+  },
+  {
+    key: 'focus',
+    label: 'Focus',
+    hint: '10–180 min',
+    desc: 'Standard flow',
+    emoji: '🎯',
+  },
+  {
+    key: 'deep',
+    label: 'Deep',
+    hint: '15–240 min',
+    desc: 'Deep work',
+    emoji: '🧠',
+  },
+]
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 20, scale: 0.96 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { delay: i * 0.08, duration: 0.35, ease: 'easeOut' },
+  }),
+}
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -79,25 +164,20 @@ export default function OnboardingPage() {
     const hasSubject = subjects.length > 0
     const allTopics = topicQueries.flatMap((query) => query.data?.topics ?? [])
     const hasTopic = allTopics.length > 0
-
-    return {
-      hasSubject,
-      hasTopic,
-      topicCount: allTopics.length,
-    }
+    return { hasSubject, hasTopic, topicCount: allTopics.length }
   }, [subjects.length, topicQueries])
 
-  const progress = ((step + 1) / STEP_TITLES.length) * 100
   const effectiveBlitz = blitzMinutes || String(user?.blitzMinutes ?? 10)
   const effectiveFocus = focusMinutes || String(user?.focusMinutes ?? 25)
   const effectiveDeep = deepMinutes || String(user?.deepMinutes ?? 50)
-  const effectiveShortBreak = shortBreakMinutes || String(user?.shortBreakMinutes ?? 5)
-  const effectiveLongBreak = longBreakMinutes || String(user?.longBreakMinutes ?? 10)
+  const effectiveShortBreak =
+    shortBreakMinutes || String(user?.shortBreakMinutes ?? 5)
+  const effectiveLongBreak =
+    longBreakMinutes || String(user?.longBreakMinutes ?? 10)
 
   const onCreateSubject = async () => {
     const name = newSubjectName.trim()
     if (!name) return
-
     try {
       const subject = await createSubject.mutateAsync({ name })
       setNewSubjectName('')
@@ -112,7 +192,6 @@ export default function OnboardingPage() {
   const onCreateTopic = async () => {
     const name = newTopicName.trim()
     if (!name || !resolvedSubjectId) return
-
     try {
       const topic = await createTopic.mutateAsync({
         subjectId: resolvedSubjectId,
@@ -154,17 +233,10 @@ export default function OnboardingPage() {
       return null
     }
     if (longBreak < shortBreak) {
-      setFlowMessage('Long break should be greater than or equal to short break.')
+      setFlowMessage('Long break should be ≥ short break.')
       return null
     }
-
-    return {
-      blitz,
-      focus,
-      deep,
-      shortBreak,
-      longBreak,
-    }
+    return { blitz, focus, deep, shortBreak, longBreak }
   }
 
   const onNext = async () => {
@@ -172,16 +244,13 @@ export default function OnboardingPage() {
       setFlowMessage('Create your first subject to continue.')
       return
     }
-
     if (step === 2 && !setup.hasTopic) {
       setFlowMessage('Add your first topic to continue.')
       return
     }
-
     if (step === 3) {
       const parsed = parseTimerPreferences()
       if (!parsed) return
-
       try {
         await updateUser.mutateAsync({
           blitzMinutes: parsed.blitz,
@@ -195,9 +264,8 @@ export default function OnboardingPage() {
         return
       }
     }
-
     setFlowMessage('')
-    setStep((prev) => Math.min(STEP_TITLES.length - 1, prev + 1))
+    setStep((prev) => Math.min(STEPS.length - 1, prev + 1))
   }
 
   const onBack = () => {
@@ -210,10 +278,8 @@ export default function OnboardingPage() {
       setFlowMessage('Complete setup first.')
       return
     }
-
     const parsed = parseTimerPreferences()
     if (!parsed) return
-
     try {
       await updateUser.mutateAsync({
         onboarded: true,
@@ -233,158 +299,284 @@ export default function OnboardingPage() {
   if (userLoading) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#070b16] text-slate-300">
-        Loading onboarding...
+        <motion.div
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+          className="text-sm tracking-widest text-slate-500 uppercase"
+        >
+          Loading…
+        </motion.div>
       </div>
     )
   }
 
+  const firstName = user?.firstName ?? 'there'
+  const progress = ((step + 1) / STEPS.length) * 100
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#070b16] text-slate-100">
+      {/* Background decorations */}
       <div className="pointer-events-none absolute inset-0">
         <motion.div
-          className="absolute top-[-120px] right-[-120px] h-[420px] w-[420px] rounded-full bg-violet-600/22 blur-[140px]"
-          animate={{ scale: [1, 1.06, 1], opacity: [0.55, 0.8, 0.55] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute bottom-[-140px] left-[-120px] h-[420px] w-[420px] rounded-full bg-cyan-500/16 blur-[140px]"
-          animate={{ scale: [1.04, 1, 1.04], opacity: [0.35, 0.55, 0.35] }}
+          className="absolute top-[-140px] right-[-140px] h-[500px] w-[500px] rounded-full bg-violet-600/18 blur-[160px]"
+          animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.75, 0.5] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.08),transparent_45%)]" />
+        <motion.div
+          className="absolute bottom-[-160px] left-[-140px] h-[480px] w-[480px] rounded-full bg-cyan-500/14 blur-[160px]"
+          animate={{ scale: [1.05, 1, 1.05], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-900/10 blur-[200px]"
+          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 6, repeat: Infinity }}
+        />
+        {/* Grid overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-4 flex items-center justify-between sm:mb-8">
-          <div className="leading-none text-white">
-            <span className="block text-2xl font-black tracking-tight">Tempo</span>
-            <span className="mt-1 block text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
-              by Patrick
-            </span>
-          </div>
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: 'w-9 h-9 border-2 border-violet-400/50',
-              },
-            }}
-          />
-        </header>
+        {/* Header */}
 
-        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center">
+        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-start pt-12 sm:pt-20">
           <div className="w-full space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm text-slate-300">
-                Step {step + 1} of {STEP_TITLES.length}
-                <span className="ml-2 text-slate-500">•</span>
-                <span className="ml-2 text-cyan-200">{STEP_TITLES[step]}</span>
-              </div>
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-violet-200">
-                +50 XP setup bonus
-              </div>
+            {/* Step pill strip */}
+            <div className="flex items-center justify-between gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-2">
+              {STEPS.map((s, index) => {
+                const active = index === step
+                const done = index < step
+                return (
+                  <motion.div
+                    key={s.id}
+                    className={`relative flex flex-1 items-center justify-center rounded-xl py-1.5 text-xs font-semibold transition-colors ${
+                      active
+                        ? 'bg-violet-600/80 text-white shadow-[0_0_20px_rgba(124,58,237,0.5)]'
+                        : done
+                          ? 'bg-cyan-500/20 text-cyan-300'
+                          : 'text-slate-600'
+                    }`}
+                    animate={active ? { scale: [0.97, 1] } : { scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {done && (
+                      <CheckCircle2 className="mr-1 h-3 w-3 text-cyan-400" />
+                    )}
+                    <span className="hidden sm:inline">{s.label}</span>
+                    <span className="sm:hidden">{index + 1}</span>
+                  </motion.div>
+                )
+              })}
             </div>
 
-            <div className="space-y-3">
-              <Progress value={progress} className="h-2.5 bg-white/10" />
-              <div className="flex items-center justify-between">
-                {STEP_TITLES.map((title, index) => {
-                  const active = index === step
-                  const done = index < step
-                  return (
-                    <motion.div
-                      key={title}
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        active
-                          ? 'bg-violet-300 shadow-[0_0_16px_rgba(167,139,250,0.95)]'
-                          : done
-                            ? 'bg-cyan-300/90'
-                            : 'bg-white/20'
-                      }`}
-                      animate={active ? { scale: [1, 1.25, 1] } : { scale: 1 }}
-                      transition={{ duration: 1.1, repeat: active ? Infinity : 0 }}
-                    />
-                  )
-                })}
-              </div>
-            </div>
+            {/* Progress bar */}
+            <motion.div
+              initial={false}
+              animate={{ width: `${progress}%` }}
+              transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+              className="h-0.5 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400"
+              style={{ width: `${progress}%` }}
+            />
 
-            {!!flowMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-slate-300"
-              >
-                {flowMessage}
-              </motion.div>
-            )}
+            {/* Error message */}
+            <AnimatePresence>
+              {!!flowMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -6, height: 0 }}
+                  className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200"
+                >
+                  {flowMessage}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
+            {/* Step content */}
             <AnimatePresence mode="wait">
               <motion.section
                 key={`onboarding-step-${step}`}
-                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -12, scale: 0.98 }}
-                transition={{ duration: 0.22, ease: 'easeOut' }}
-                className="space-y-5"
+                exit={{ opacity: 0, y: -16, scale: 0.98 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className="space-y-6"
               >
+                {/* ── STEP 0: Welcome ── */}
                 {step === 0 && (
-                  <>
-                    <h2 className="text-center text-4xl font-black tracking-tight text-white sm:text-5xl">
-                      Welcome to Tempo
-                    </h2>
-                    <p className="mx-auto max-w-lg text-center text-sm text-slate-300 sm:text-base">
-                      Quick setup, then you are locked in. Create your first subject and topic to
-                      unlock full tracking.
-                    </p>
-                    <div className="grid gap-2.5 sm:grid-cols-3">
-                      <QuickStat label="Level" value={`Lvl ${getLevelFromXp(user?.totalXP ?? 0)}`} />
-                      <QuickStat label="Streak" value={`${user?.streak ?? 0} days`} />
-                      <QuickStat label="XP" value={`${user?.totalXP ?? 0}`} />
-                    </div>
-                  </>
-                )}
-
-                {step === 1 && (
-                  <>
-                    <h2 className="text-center text-3xl font-black tracking-tight text-white">
-                      Create your first subject
-                    </h2>
-                    <p className="text-center text-sm text-slate-300">
-                      Subjects are broad buckets like Math, Biology, or Frontend.
-                    </p>
-                    <div className="mx-auto flex w-full max-w-lg items-center gap-2">
-                      <Input
-                        value={newSubjectName}
-                        onChange={(event) => setNewSubjectName(event.target.value)}
-                        placeholder="e.g. Mathematics"
-                        className="h-11 border-white/15 bg-white/5 text-white placeholder:text-slate-500"
-                      />
-                      <Button
-                        onClick={onCreateSubject}
-                        disabled={!newSubjectName.trim() || createSubject.isPending}
-                        className="h-11 bg-violet-600 text-white hover:bg-violet-500"
+                  <div className="space-y-6 text-center">
+                    <div className="space-y-3">
+                      <motion.div
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 200,
+                          damping: 14,
+                          delay: 0.1,
+                        }}
+                        className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-600/40 to-purple-800/40 text-5xl shadow-[0_0_40px_rgba(124,58,237,0.25)]"
                       >
-                        Add
-                      </Button>
+                        👋
+                      </motion.div>
+                      <div>
+                        <motion.h2
+                          className="text-4xl font-black tracking-tight text-white sm:text-5xl"
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 }}
+                        >
+                          Hey, {firstName}!
+                        </motion.h2>
+                        <motion.p
+                          className="mt-2 text-sm text-slate-400 sm:text-base"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 }}
+                        >
+                          Welcome to{' '}
+                          <span className="font-semibold text-violet-300">
+                            Tempo
+                          </span>{' '}
+                          — your focus companion. Quick setup, then you&apos;re
+                          locked in. 🚀
+                        </motion.p>
+                      </div>
                     </div>
-                  </>
+
+                    <motion.div
+                      className="grid gap-3 sm:grid-cols-3"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <QuickStat
+                        label="Level"
+                        value={`Lvl ${getLevelFromXp(user?.totalXP ?? 0)}`}
+                        icon="⚡"
+                        color="violet"
+                      />
+                      <QuickStat
+                        label="Streak"
+                        value={`${user?.streak ?? 0} days`}
+                        icon="🔥"
+                        color="orange"
+                      />
+                      <QuickStat
+                        label="XP"
+                        value={`${user?.totalXP ?? 0}`}
+                        icon="✨"
+                        color="cyan"
+                      />
+                    </motion.div>
+
+                    <motion.div
+                      className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-xs font-semibold text-violet-300"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      +50 XP setup bonus waiting for you
+                    </motion.div>
+                  </div>
                 )}
 
+                {/* ── STEP 1: Create Subject ── */}
+                {step === 1 && (
+                  <div className="space-y-5">
+                    <div className="space-y-2 text-center">
+                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-600/20 text-3xl">
+                        📚
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tight text-white">
+                        Create your first subject
+                      </h2>
+                      <p className="text-sm text-slate-400">
+                        Subjects are broad buckets — like{' '}
+                        <span className="text-slate-300">Math</span>,{' '}
+                        <span className="text-slate-300">Biology</span>, or{' '}
+                        <span className="text-slate-300">System Design</span>.
+                      </p>
+                    </div>
+
+                    <div className="mx-auto w-full max-w-md space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="subject-name"
+                          value={newSubjectName}
+                          onChange={(e) => setNewSubjectName(e.target.value)}
+                          onKeyDown={(e) =>
+                            e.key === 'Enter' && void onCreateSubject()
+                          }
+                          placeholder="e.g. Mathematics"
+                          className="h-12 border-white/15 bg-white/5 text-white placeholder:text-slate-600 focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20"
+                        />
+                        <motion.div whileTap={{ scale: 0.95 }}>
+                          <Button
+                            onClick={() => void onCreateSubject()}
+                            disabled={
+                              !newSubjectName.trim() || createSubject.isPending
+                            }
+                            className="h-12 bg-violet-600 px-5 font-semibold text-white hover:bg-violet-500"
+                          >
+                            Add
+                          </Button>
+                        </motion.div>
+                      </div>
+
+                      {setup.hasSubject && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex flex-wrap gap-2"
+                        >
+                          {subjects.map((s) => (
+                            <span
+                              key={s.id}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              {s.name}
+                            </span>
+                          ))}
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 2: Add Topic ── */}
                 {step === 2 && (
-                  <>
-                    <h2 className="text-center text-3xl font-black tracking-tight text-white">
-                      Add your first topic
-                    </h2>
-                    <p className="text-center text-sm text-slate-300">
-                      Keep topics small and concrete so each session has clear wins.
-                    </p>
-                    <div className="mx-auto max-w-lg space-y-3">
+                  <div className="space-y-5">
+                    <div className="space-y-2 text-center">
+                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-600/20 text-3xl">
+                        🎯
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tight text-white">
+                        Add your first topic
+                      </h2>
+                      <p className="text-sm text-slate-400">
+                        Keep topics small and concrete so every session feels
+                        like a clear win.
+                      </p>
+                    </div>
+
+                    <div className="mx-auto max-w-md space-y-3">
                       <div className="space-y-1.5">
-                        <label className="block text-xs tracking-wide text-slate-400 uppercase">Subject</label>
+                        <label className="block text-xs tracking-widest text-slate-500 uppercase">
+                          Subject
+                        </label>
                         <select
                           value={resolvedSubjectId}
-                          onChange={(event) => setSelectedSubjectId(event.target.value)}
-                          className="h-11 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white outline-none"
+                          onChange={(e) => setSelectedSubjectId(e.target.value)}
+                          className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white transition-all outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20"
                           disabled={!subjects.length}
                         >
                           {!subjects.length ? (
@@ -402,51 +594,86 @@ export default function OnboardingPage() {
                           )}
                         </select>
                       </div>
+
                       <div className="flex items-center gap-2">
                         <Input
+                          id="topic-name"
                           value={newTopicName}
-                          onChange={(event) => setNewTopicName(event.target.value)}
-                          placeholder="e.g. Derivatives basics"
-                          className="h-11 border-white/15 bg-white/5 text-white placeholder:text-slate-500"
-                        />
-                        <Button
-                          onClick={onCreateTopic}
-                          disabled={
-                            !newTopicName.trim() || !resolvedSubjectId || createTopic.isPending
+                          onChange={(e) => setNewTopicName(e.target.value)}
+                          onKeyDown={(e) =>
+                            e.key === 'Enter' && void onCreateTopic()
                           }
-                          className="h-11 bg-cyan-600 text-white hover:bg-cyan-500"
-                        >
-                          Add
-                        </Button>
+                          placeholder="e.g. Derivatives basics"
+                          className="h-12 border-white/15 bg-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/20"
+                        />
+                        <motion.div whileTap={{ scale: 0.95 }}>
+                          <Button
+                            onClick={() => void onCreateTopic()}
+                            disabled={
+                              !newTopicName.trim() ||
+                              !resolvedSubjectId ||
+                              createTopic.isPending
+                            }
+                            className="h-12 bg-cyan-600 px-5 font-semibold text-white hover:bg-cyan-500"
+                          >
+                            Add
+                          </Button>
+                        </motion.div>
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
+                {/* ── STEP 3: Timer Setup ── */}
                 {step === 3 && (
-                  <>
-                    <h2 className="text-center text-3xl font-black tracking-tight text-white">
-                      Set your timer style
-                    </h2>
-                    <p className="text-center text-sm text-slate-300">
-                      Pick your focus and break durations now. You can change these later in Settings.
-                    </p>
+                  <div className="space-y-5">
+                    <div className="space-y-2 text-center">
+                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-600/20 text-3xl">
+                        ⏱️
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tight text-white">
+                        Set your timer style
+                      </h2>
+                      <p className="text-sm text-slate-400">
+                        Match your session lengths to how you actually work.
+                        Tweakable anytime in Settings.
+                      </p>
+                    </div>
+
+                    {/* Mode legend */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {TIMER_MODES.map((mode) => (
+                        <div
+                          key={mode.key}
+                          className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5 text-center"
+                        >
+                          <div className="mb-0.5 text-xl">{mode.emoji}</div>
+                          <div className="text-xs font-bold text-white">
+                            {mode.label}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {mode.desc}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
                     <div className="grid gap-3 sm:grid-cols-3">
                       <TimerField
                         label="Blitz"
-                        hint="5-120 min"
+                        hint="5–120 min"
                         value={effectiveBlitz}
                         onChange={setBlitzMinutes}
                       />
                       <TimerField
                         label="Focus"
-                        hint="10-180 min"
+                        hint="10–180 min"
                         value={effectiveFocus}
                         onChange={setFocusMinutes}
                       />
                       <TimerField
                         label="Deep"
-                        hint="15-240 min"
+                        hint="15–240 min"
                         value={effectiveDeep}
                         onChange={setDeepMinutes}
                       />
@@ -454,96 +681,189 @@ export default function OnboardingPage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <TimerField
                         label="Short break"
-                        hint="1-30 min"
+                        hint="1–30 min"
                         value={effectiveShortBreak}
                         onChange={setShortBreakMinutes}
                       />
                       <TimerField
                         label="Long break"
-                        hint="5-60 min"
+                        hint="5–60 min"
                         value={effectiveLongBreak}
                         onChange={setLongBreakMinutes}
                       />
                     </div>
-                  </>
+                  </div>
                 )}
 
+                {/* ── STEP 4: Features Overview ── */}
                 {step === 4 && (
-                  <>
-                    <h2 className="text-center text-3xl font-black tracking-tight text-white">
-                      How Tempo works
-                    </h2>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <InfoRow icon={Zap} title="XP + Levels">
-                        Finish sessions to earn XP and level up over time.
-                      </InfoRow>
-                      <InfoRow icon={Flame} title="Streak">
-                        Study daily to build a streak and protect momentum.
-                      </InfoRow>
-                      <InfoRow icon={Trophy} title="Achievements">
-                        Unlock milestones for consistency and focused time.
-                      </InfoRow>
-                      <InfoRow icon={Rocket} title="Quests">
-                        Daily quests suggest what to do next for quick progress.
-                      </InfoRow>
+                  <div className="space-y-5">
+                    <div className="space-y-2 text-center">
+                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-600/20 text-3xl">
+                        🌟
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tight text-white">
+                        Everything in Tempo
+                      </h2>
+                      <p className="text-sm text-slate-400">
+                        Six features to help you study smarter, not just longer.
+                      </p>
                     </div>
-                  </>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {FEATURES.map((feature, i) => (
+                        <motion.div
+                          key={feature.title}
+                          custom={i}
+                          variants={cardVariants}
+                          initial="hidden"
+                          animate="visible"
+                          whileHover={{ scale: 1.02, y: -2 }}
+                          className={`relative rounded-xl border bg-gradient-to-br p-4 ${feature.color} cursor-default transition-shadow hover:shadow-[0_0_24px_rgba(0,0,0,0.3)]`}
+                        >
+                          {feature.badge && (
+                            <span className="absolute top-2.5 right-2.5 rounded-full border border-violet-400/40 bg-violet-500/30 px-2 py-0.5 text-[10px] font-bold text-violet-300">
+                              {feature.badge}
+                            </span>
+                          )}
+                          <feature.icon
+                            className={`mb-2.5 h-5 w-5 ${feature.iconColor}`}
+                          />
+                          <p className="mb-1 text-sm font-bold text-white">
+                            {feature.title}
+                          </p>
+                          <p className="text-xs leading-relaxed text-slate-400">
+                            {feature.description}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
+                {/* ── STEP 5: Done ── */}
                 {step === 5 && (
-                  <>
-                    <h2 className="text-center text-3xl font-black tracking-tight text-white">
-                      You&apos;re ready
-                    </h2>
-                    <p className="text-center text-sm text-slate-300">
-                      Complete setup and jump into your dashboard.
-                    </p>
+                  <div className="space-y-5 text-center">
+                    <motion.div
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 200,
+                        damping: 14,
+                      }}
+                      className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-600/40 to-teal-800/40 text-5xl shadow-[0_0_40px_rgba(16,185,129,0.2)]"
+                    >
+                      🎉
+                    </motion.div>
+
+                    <div className="space-y-2">
+                      <h2 className="text-4xl font-black tracking-tight text-white">
+                        You&apos;re all set
+                      </h2>
+                      <p className="text-sm text-slate-400">
+                        Complete setup and dive into your dashboard. Your
+                        Flashcard Decks will be waiting inside each subject
+                        whenever you&apos;re ready.
+                      </p>
+                    </div>
+
                     <div className="grid gap-2.5 sm:grid-cols-3">
-                      <QuickStat label="Subjects" value={String(subjects.length)} />
-                      <QuickStat label="Topics" value={String(setup.topicCount)} />
+                      <QuickStat
+                        label="Subjects"
+                        value={String(subjects.length)}
+                        icon="📚"
+                        color="violet"
+                      />
+                      <QuickStat
+                        label="Topics"
+                        value={String(setup.topicCount)}
+                        icon="🎯"
+                        color="cyan"
+                      />
                       <QuickStat
                         label="Status"
-                        value={setup.hasSubject && setup.hasTopic ? 'Ready' : 'Incomplete'}
+                        value={
+                          setup.hasSubject && setup.hasTopic
+                            ? 'Ready ✓'
+                            : 'Incomplete'
+                        }
+                        icon={setup.hasSubject && setup.hasTopic ? '✅' : '⚠️'}
+                        color="emerald"
                       />
                     </div>
-                    <Button
-                      onClick={onFinishOnboarding}
-                      disabled={!setup.hasSubject || !setup.hasTopic || updateUser.isPending}
-                      className="h-12 w-full bg-emerald-600 font-bold text-white hover:bg-emerald-500"
+
+                    {/* Flashcard teaser */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="flex items-center gap-3 rounded-xl border border-violet-500/20 bg-violet-500/[0.07] px-4 py-3 text-left"
                     >
-                      <CheckCircle2 className="h-4 w-4" />
-                      Complete setup and enter dashboard
-                    </Button>
-                  </>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-500/30 bg-violet-600/20">
+                        <BookOpen className="h-4 w-4 text-violet-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white">
+                          Flashcard Decks are ready
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Head to any subject and create your first deck to
+                          start reviewing.
+                        </p>
+                      </div>
+                    </motion.div>
+
+                    <motion.div whileTap={{ scale: 0.98 }}>
+                      <Button
+                        onClick={() => void onFinishOnboarding()}
+                        disabled={
+                          !setup.hasSubject ||
+                          !setup.hasTopic ||
+                          updateUser.isPending
+                        }
+                        className="h-13 w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-base font-bold text-white shadow-[0_0_30px_rgba(16,185,129,0.25)] transition-all hover:from-emerald-500 hover:to-teal-500"
+                      >
+                        <CheckCircle2 className="h-5 w-5" />
+                        Enter dashboard
+                        <ArrowRight className="h-5 w-5" />
+                      </Button>
+                    </motion.div>
+                  </div>
                 )}
               </motion.section>
             </AnimatePresence>
 
-            <div className="flex items-center justify-between pt-3">
-              <Button
-                variant="outline"
-                className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                onClick={onBack}
-                disabled={step === 0}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-
-              {step < STEP_TITLES.length - 1 && (
+            {/* Navigation */}
+            <div className="flex items-center justify-between pt-2">
+              <motion.div whileTap={{ scale: 0.95 }}>
                 <Button
-                  className="bg-violet-600 text-white hover:bg-violet-500"
-                  onClick={() => void onNext()}
-                  disabled={updateUser.isPending && step === 3}
+                  variant="outline"
+                  className="border-white/12 bg-white/[0.04] text-slate-300 hover:bg-white/10 hover:text-white"
+                  onClick={onBack}
+                  disabled={step === 0}
                 >
-                  {step === 3 ? 'Save timer prefs' : 'Next'}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
                 </Button>
+              </motion.div>
+
+              {step < STEPS.length - 1 && (
+                <motion.div whileTap={{ scale: 0.95 }}>
+                  <Button
+                    className="bg-violet-600 font-semibold text-white hover:bg-violet-500"
+                    onClick={() => void onNext()}
+                    disabled={updateUser.isPending && step === 3}
+                  >
+                    {step === 3 ? 'Save & continue' : 'Continue'}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </motion.div>
               )}
             </div>
 
-            <p className="text-center text-xs text-slate-500">
-              You can revisit timer and break durations anytime in Settings.
+            <p className="text-center text-xs text-slate-600">
+              Timer and preferences can be changed anytime in Settings.
             </p>
           </div>
         </main>
@@ -552,31 +872,32 @@ export default function OnboardingPage() {
   )
 }
 
-function InfoRow({
-  icon: Icon,
-  title,
-  children,
+function QuickStat({
+  label,
+  value,
+  icon,
+  color,
 }: {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  children: React.ReactNode
+  label: string
+  value: string
+  icon: string
+  color: 'violet' | 'cyan' | 'orange' | 'emerald'
 }) {
+  const colorMap = {
+    violet: 'from-violet-600/20 to-violet-900/10 border-violet-500/20',
+    cyan: 'from-cyan-600/20 to-cyan-900/10 border-cyan-500/20',
+    orange: 'from-orange-600/20 to-orange-900/10 border-orange-500/20',
+    emerald: 'from-emerald-600/20 to-emerald-900/10 border-emerald-500/20',
+  }
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-slate-300">
-      <p className="mb-1 inline-flex items-center gap-2 font-semibold text-white">
-        <Icon className="h-3.5 w-3.5" />
-        {title}
+    <div
+      className={`rounded-xl border bg-gradient-to-br px-3 py-3.5 ${colorMap[color]}`}
+    >
+      <div className="mb-1 text-lg">{icon}</div>
+      <p className="text-[10px] tracking-widest text-slate-500 uppercase">
+        {label}
       </p>
-      <p>{children}</p>
-    </div>
-  )
-}
-
-function QuickStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.1] to-white/[0.03] px-3 py-3">
-      <p className="text-xs tracking-wide text-slate-400 uppercase">{label}</p>
-      <p className="mt-1 text-xl font-black text-white">{value}</p>
+      <p className="mt-0.5 text-lg font-black text-white">{value}</p>
     </div>
   )
 }
@@ -593,16 +914,18 @@ function TimerField({
   onChange: (value: string) => void
 }) {
   return (
-    <div className="space-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
-      <label className="text-xs tracking-wide text-slate-400 uppercase">{label}</label>
+    <div className="space-y-1.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-3">
+      <label className="text-xs tracking-widest text-slate-500 uppercase">
+        {label}
+      </label>
       <Input
         type="number"
         min={1}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 border-white/15 bg-white/5 text-white placeholder:text-slate-500"
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
       />
-      <p className="text-xs text-slate-500">{hint}</p>
+      <p className="text-[11px] text-slate-600">{hint}</p>
     </div>
   )
 }
