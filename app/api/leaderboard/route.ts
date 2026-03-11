@@ -3,6 +3,36 @@ import prisma from '@/lib/prisma'
 import { withAuth, type AuthContext } from '@/lib/with-auth-guard'
 import { getLevelFromXp } from '@/lib/progression'
 
+const CACHE_TTL_MS = 1000 * 60 * 3
+type WeeklyRankRow = {
+  rank: number
+  sessions: number
+  totalSeconds: number
+  weeklyXP: number
+}
+type LeaderboardCache = {
+  cachedAt: number
+  weekStartIso: string
+  globalTop: Array<{
+    rank: number
+    userId: string
+    name: string
+    totalXP: number
+    level: number
+    streak: number
+  }>
+  weeklyTop: Array<{
+    rank: number
+    userId: string
+    name: string
+    sessions: number
+    focusMinutes: number
+    weeklyXP: number
+  }>
+  weeklyRankByUser: Record<string, WeeklyRankRow>
+}
+let leaderboardCache: LeaderboardCache | null = null
+
 function getDisplayName(user: {
   firstName: string | null
   lastName: string | null
@@ -51,30 +81,82 @@ export const GET = withAuth(
   async (_req: NextRequest, { user }: AuthContext) => {
     try {
       const weekStart = getCurrentWeekStartUtc()
+      const weekStartIso = weekStart.toISOString()
       const topLimit = 50
 
-      const topUsers = await prisma.user.findMany({
-        orderBy: [{ totalXP: 'desc' }, { createdAt: 'asc' }],
-        take: topLimit,
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          totalXP: true,
-          streak: true,
-          createdAt: true,
-        },
-      })
+      const cacheIsFresh =
+        leaderboardCache &&
+        Date.now() - leaderboardCache.cachedAt < CACHE_TTL_MS &&
+        leaderboardCache.weekStartIso === weekStartIso
 
-      const globalTop = rankWithTies(topUsers, (row) => row.totalXP).map((row) => ({
-        rank: row.rank,
-        userId: row.id,
-        name: getDisplayName(row),
-        totalXP: row.totalXP,
-        level: getLevelFromXp(row.totalXP),
-        streak: row.streak,
-      }))
+      if (!cacheIsFresh) {
+        const topUsers = await prisma.user.findMany({
+          orderBy: [{ totalXP: 'desc' }, { createdAt: 'asc' }],
+          take: topLimit,
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            totalXP: true,
+            streak: true,
+            createdAt: true,
+          },
+        })
+
+        const globalTop = rankWithTies(topUsers, (row) => row.totalXP).map((row) => ({
+          rank: row.rank,
+          userId: row.id,
+          name: getDisplayName(row),
+          totalXP: row.totalXP,
+          level: getLevelFromXp(row.totalXP),
+          streak: row.streak,
+        }))
+
+        const weeklySnapshots = await prisma.weeklyLeaderboardSnapshot.findMany({
+          where: { weekStart },
+          orderBy: { rank: 'asc' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        })
+
+        const weeklyTop = weeklySnapshots.slice(0, topLimit).map((row) => ({
+          rank: row.rank,
+          userId: row.userId,
+          name: getDisplayName(row.user),
+          sessions: row.sessions,
+          focusMinutes: row.focusMinutes,
+          weeklyXP: row.xpGained,
+        }))
+
+        const weeklyRankByUser: Record<string, WeeklyRankRow> = {}
+        for (const row of weeklySnapshots) {
+          weeklyRankByUser[row.userId] = {
+            rank: row.rank,
+            sessions: row.sessions,
+            totalSeconds: row.focusMinutes * 60,
+            weeklyXP: row.xpGained,
+          }
+        }
+
+        leaderboardCache = {
+          cachedAt: Date.now(),
+          weekStartIso,
+          globalTop,
+          weeklyTop,
+          weeklyRankByUser,
+        }
+      }
+
+      const { globalTop, weeklyTop, weeklyRankByUser } = leaderboardCache!
 
       const usersAboveMe = await prisma.user.count({
         where: {
@@ -97,63 +179,7 @@ export const GET = withAuth(
         streak: user.streak,
       }
 
-      const weeklyGrouped = await prisma.session.groupBy({
-        by: ['userId'],
-        where: {
-          createdAt: { gte: weekStart },
-        },
-        _count: { _all: true },
-        _sum: { duration: true, xpEarned: true },
-      })
-
-      const weeklySorted = [...weeklyGrouped].sort((a, b) => {
-        const bySessions = b._count._all - a._count._all
-        if (bySessions !== 0) return bySessions
-        const byXp = (b._sum.xpEarned ?? 0) - (a._sum.xpEarned ?? 0)
-        if (byXp !== 0) return byXp
-        return (b._sum.duration ?? 0) - (a._sum.duration ?? 0)
-      })
-
-      const weeklyTopIds = weeklySorted.slice(0, topLimit).map((row) => row.userId)
-      const meInTop = weeklyTopIds.includes(user.id)
-      const usersForWeekly = await prisma.user.findMany({
-        where: {
-          id: {
-            in: meInTop ? weeklyTopIds : [...weeklyTopIds, user.id],
-          },
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      })
-      const userMap = new Map(usersForWeekly.map((item) => [item.id, item]))
-
-      const weeklyRanked = rankWithTies(weeklySorted, (row) => row._count._all).map(
-        (row) => ({
-          rank: row.rank,
-          userId: row.userId,
-          sessions: row._count._all,
-          totalSeconds: row._sum.duration ?? 0,
-          weeklyXP: row._sum.xpEarned ?? 0,
-        })
-      )
-
-      const weeklyTop = weeklyRanked.slice(0, topLimit).map((row) => {
-        const person = userMap.get(row.userId)
-        return {
-          rank: row.rank,
-          userId: row.userId,
-          name: person ? getDisplayName(person) : 'Unknown user',
-          sessions: row.sessions,
-          focusMinutes: Math.floor(row.totalSeconds / 60),
-          weeklyXP: row.weeklyXP,
-        }
-      })
-
-      const meWeeklyRaw = weeklyRanked.find((row) => row.userId === user.id)
+      const meWeeklyRaw = weeklyRankByUser[user.id]
       const meWeekly = meWeeklyRaw
         ? {
             rank: meWeeklyRaw.rank,
@@ -174,7 +200,7 @@ export const GET = withAuth(
 
       return NextResponse.json({
         generatedAt: new Date().toISOString(),
-        weekStart: weekStart.toISOString(),
+        weekStart: weekStartIso,
         global: {
           top: globalTop,
           me: meGlobal,
