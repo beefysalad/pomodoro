@@ -4,6 +4,7 @@ import { withAuth, type AuthContext } from '@/lib/with-auth-guard'
 import { getLevelFromXp } from '@/lib/progression'
 
 const CACHE_TTL_MS = 1000 * 60 * 3
+const XP_PER_MINUTE = 1
 type WeeklyRankRow = {
   rank: number
   sessions: number
@@ -128,22 +129,86 @@ export const GET = withAuth(
           },
         })
 
-        const weeklyTop = weeklySnapshots.slice(0, topLimit).map((row) => ({
-          rank: row.rank,
-          userId: row.userId,
-          name: getDisplayName(row.user),
-          sessions: row.sessions,
-          focusMinutes: row.focusMinutes,
-          weeklyXP: row.xpGained,
-        }))
-
+        let weeklyTop: LeaderboardCache['weeklyTop'] = []
         const weeklyRankByUser: Record<string, WeeklyRankRow> = {}
-        for (const row of weeklySnapshots) {
-          weeklyRankByUser[row.userId] = {
+
+        if (weeklySnapshots.length > 0) {
+          weeklyTop = weeklySnapshots.slice(0, topLimit).map((row) => ({
             rank: row.rank,
+            userId: row.userId,
+            name: getDisplayName(row.user),
             sessions: row.sessions,
-            totalSeconds: row.focusMinutes * 60,
+            focusMinutes: row.focusMinutes,
             weeklyXP: row.xpGained,
+          }))
+
+          for (const row of weeklySnapshots) {
+            weeklyRankByUser[row.userId] = {
+              rank: row.rank,
+              sessions: row.sessions,
+              totalSeconds: row.focusMinutes * 60,
+              weeklyXP: row.xpGained,
+            }
+          }
+        } else {
+          const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+          const weeklySessions = await prisma.session.groupBy({
+            by: ['userId'],
+            where: {
+              createdAt: {
+                gte: weekStart,
+                lt: weekEnd,
+              },
+            },
+            _count: { _all: true },
+            _sum: { duration: true },
+          })
+
+          const userIds = weeklySessions.map((row) => row.userId)
+          const weeklyUsers = await prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          })
+
+          const weeklyRows = weeklySessions.map((row) => {
+            const totalSeconds = row._sum.duration ?? 0
+            const focusMinutes = Math.floor(totalSeconds / 60)
+            return {
+              userId: row.userId,
+              sessions: row._count._all,
+              focusMinutes,
+              weeklyXP: Math.max(0, focusMinutes * XP_PER_MINUTE),
+            }
+          })
+
+          const ranked = rankWithTies(weeklyRows, (row) => row.weeklyXP)
+            .sort((a, b) => b.weeklyXP - a.weeklyXP)
+            .map((row, index) => ({ ...row, rank: row.rank ?? index + 1 }))
+
+          weeklyTop = ranked.slice(0, topLimit).map((row) => {
+            const user = weeklyUsers.find((entry) => entry.id === row.userId)
+            return {
+              rank: row.rank,
+              userId: row.userId,
+              name: user ? getDisplayName(user) : 'Unknown',
+              sessions: row.sessions,
+              focusMinutes: row.focusMinutes,
+              weeklyXP: row.weeklyXP,
+            }
+          })
+
+          for (const row of ranked) {
+            weeklyRankByUser[row.userId] = {
+              rank: row.rank,
+              sessions: row.sessions,
+              totalSeconds: row.focusMinutes * 60,
+              weeklyXP: row.weeklyXP,
+            }
           }
         }
 
