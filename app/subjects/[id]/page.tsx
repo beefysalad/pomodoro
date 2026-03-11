@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { useRouter } from 'next/navigation'
+import { useMemo, useState, useRef, useEffect } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -11,6 +10,9 @@ import {
   GripVertical,
   Plus,
   Trash2,
+  BookOpen,
+  Edit2,
+  MoreVertical,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AppHeader } from '@/components/app-header'
@@ -28,6 +30,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -36,6 +44,17 @@ import {
   useSubjectTopics,
   useUpdateTopic,
 } from '@/hooks/use-topics'
+import {
+  useDeleteFlashcard,
+  useFlashcards,
+  useUpdateFlashcard,
+  useFlashcardStats,
+} from '@/hooks/use-flashcards'
+import {
+  useFlashcardDecks,
+  useUpdateFlashcardDeck,
+  useDeleteFlashcardDeck,
+} from '@/hooks/use-flashcard-decks'
 import {
   TOPIC_STATUSES,
   TOPIC_STATUS_LABEL,
@@ -50,6 +69,17 @@ function formatDuration(totalSeconds: number) {
   return `${hours}h ${mins}m`
 }
 
+function shuffle<T>(items: T[]) {
+  const list = [...items]
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[list[i], list[j]] = [list[j], list[i]]
+  }
+  return list
+}
+
+const getNow = () => Date.now()
+
 export default function SubjectDetailPage() {
   const router = useRouter()
   const timer = useTimer()
@@ -61,10 +91,51 @@ export default function SubjectDetailPage() {
   const deleteTopic = useDeleteTopic()
 
   const [newTopicName, setNewTopicName] = useState('')
+  const searchParams = useSearchParams()
+  const viewMode =
+    (searchParams.get('view') as 'kanban' | 'flashcards') || 'kanban'
+  const flashcardDeckId = searchParams.get('deckId') || ''
+
+  const setViewMode = (view: 'kanban' | 'flashcards') => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('view', view)
+    router.push(`?${params.toString()}`, { scroll: false })
+  }
+
+  const setFlashcardDeckId = (deckId: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (deckId) {
+      params.set('deckId', deckId)
+    } else {
+      params.delete('deckId')
+    }
+    router.push(`?${params.toString()}`, { scroll: false })
+  }
+  const [studyIndex, setStudyIndex] = useState(0)
+  const [showAnswer, setShowAnswer] = useState(false)
+  const [isStudyOpen, setIsStudyOpen] = useState(false)
+  const [isQuizOpen, setIsQuizOpen] = useState(false)
+  const [testActive, setTestActive] = useState(false)
+  const [testItems, setTestItems] = useState<
+    Array<{ id: string; question: string; answer: string; choices: string[] }>
+  >([])
+  const [testIndex, setTestIndex] = useState(0)
+  const [testScore, setTestScore] = useState(0)
+  const [quizTimeLeft, setQuizTimeLeft] = useState(20)
+  const [quizSecondsPerQuestion, setQuizSecondsPerQuestion] = useState(20)
+  const quizDeadlineRef = useRef<number | null>(null)
+  const testIndexRef = useRef(0)
+  const testItemsRef = useRef(testItems)
   const [draggingTopicId, setDraggingTopicId] = useState('')
   const [activeDropStatus, setActiveDropStatus] = useState<TopicStatus | null>(
     null
   )
+  const [editingDeck, setEditingDeck] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [deletingDeckId, setDeletingDeckId] = useState<string | null>(null)
+
   const [dragPreview, setDragPreview] = useState<{
     id: string
     name: string
@@ -160,6 +231,26 @@ export default function SubjectDetailPage() {
     }
   }, [subject])
 
+  useEffect(() => {
+    testIndexRef.current = testIndex
+  }, [testIndex])
+
+  useEffect(() => {
+    testItemsRef.current = testItems
+  }, [testItems])
+
+  const { data: decks = [] } = useFlashcardDecks(subjectId)
+  const updateDeck = useUpdateFlashcardDeck(subjectId)
+  const deleteDeck = useDeleteFlashcardDeck(subjectId)
+
+  const resolvedFlashcardDeckId = flashcardDeckId || decks[0]?.id || ''
+
+  const { data: flashcards = [] } = useFlashcards(resolvedFlashcardDeckId)
+  const updateFlashcard = useUpdateFlashcard(resolvedFlashcardDeckId)
+  const deleteFlashcard = useDeleteFlashcard(resolvedFlashcardDeckId)
+  const flashcardStats = useFlashcardStats(flashcards)
+  const activeStudyCard = flashcards[studyIndex]
+
   const onCreateTopic = async () => {
     const name = newTopicName.trim()
     if (!name) return
@@ -176,6 +267,143 @@ export default function SubjectDetailPage() {
       toast.error('Could not create topic.')
     }
   }
+
+  const onReviewFlashcard = async (cardId: string, status: string) => {
+    try {
+      await updateFlashcard.mutateAsync({
+        cardId,
+        payload: {
+          status,
+          lastReviewedAt: new Date().toISOString(),
+        },
+      })
+      setShowAnswer(false)
+      setStudyIndex((prev) =>
+        Math.min(prev + 1, Math.max(0, flashcards.length - 1))
+      )
+    } catch {
+      setPageMessage('Could not update flashcard.')
+    }
+  }
+
+  const onUpdateDeck = async () => {
+    if (!editingDeck || !editingDeck.name.trim()) return
+    try {
+      await updateDeck.mutateAsync({
+        deckId: editingDeck.id,
+        payload: { name: editingDeck.name },
+      })
+      setEditingDeck(null)
+      toast.success('Deck renamed')
+    } catch {
+      toast.error('Could not rename deck')
+    }
+  }
+
+  const onDeleteDeck = async () => {
+    if (!deletingDeckId) return
+    try {
+      await deleteDeck.mutateAsync(deletingDeckId)
+      if (resolvedFlashcardDeckId === deletingDeckId) {
+        setFlashcardDeckId('')
+      }
+      setDeletingDeckId(null)
+      toast.success('Deck deleted')
+    } catch {
+      toast.error('Could not delete deck')
+    }
+  }
+
+  const onStartTest = (count: number) => {
+    const base = shuffle(
+      flashcards.map((card) => ({
+        id: card.id,
+        question: card.question,
+        answer: card.answer,
+        choices: card.choices ?? [],
+      }))
+    )
+    const items = base.slice(0, Math.min(count, base.length)).map((card) => {
+      if (card.choices.length >= 2) {
+        const baseChoices = Array.from(new Set([card.answer, ...card.choices]))
+        const choices = shuffle(baseChoices).slice(0, 4)
+        return { ...card, choices }
+      }
+
+      const otherAnswers = shuffle(
+        flashcards
+          .filter((item) => item.id !== card.id)
+          .map((item) => item.answer)
+      ).slice(0, 3)
+      const choices = shuffle([card.answer, ...otherAnswers]).slice(0, 4)
+      return { ...card, choices }
+    })
+    setTestItems(items)
+    setTestIndex(0)
+    setTestScore(0)
+    setTestActive(true)
+    setIsQuizOpen(true)
+    setQuizTimeLeft(quizSecondsPerQuestion)
+    quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
+  }
+
+  const onSelectTestChoice = (choice: string) => {
+    if (!testActive) return
+    const current = testItems[testIndex]
+    if (!current) return
+    if (choice.trim().toLowerCase() === current.answer.trim().toLowerCase()) {
+      setTestScore((prev) => prev + 1)
+    }
+    const nextIndex = testIndex + 1
+    if (nextIndex >= testItems.length) {
+      setTestActive(false)
+      return
+    }
+    setTestIndex(nextIndex)
+    setQuizTimeLeft(quizSecondsPerQuestion)
+    quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
+  }
+
+  useEffect(() => {
+    if (!isQuizOpen || !testActive) return
+
+    const tick = () => {
+      if (!quizDeadlineRef.current) {
+        quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
+      }
+      const next = Math.max(
+        0,
+        Math.ceil((quizDeadlineRef.current - getNow()) / 1000)
+      )
+      setQuizTimeLeft((prev) => (prev === next ? prev : next))
+
+      if (next === 0) {
+        setTestIndex((prev) => {
+          const total = testItemsRef.current.length
+          const nextIndex = prev + 1
+          if (nextIndex >= total) {
+            setTestActive(false)
+            return prev
+          }
+          quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
+          setQuizTimeLeft(quizSecondsPerQuestion)
+          return nextIndex
+        })
+      }
+    }
+
+    tick()
+    const interval = window.setInterval(tick, 500)
+    const onFocus = () => tick()
+    document.addEventListener('visibilitychange', onFocus)
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onFocus)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [isQuizOpen, testActive, quizSecondsPerQuestion, testItemsRef])
 
   const onDeleteTopic = async (topicId: string, topicName: string) => {
     try {
@@ -261,6 +489,23 @@ export default function SubjectDetailPage() {
             </p>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === 'kanban' ? 'default' : 'outline'}
+              className="h-9 px-4 text-sm font-semibold"
+              onClick={() => setViewMode('kanban')}
+            >
+              Kanban
+            </Button>
+            <Button
+              variant={viewMode === 'flashcards' ? 'default' : 'outline'}
+              className="h-9 px-4 text-sm font-semibold"
+              onClick={() => setViewMode('flashcards')}
+            >
+              Flashcards
+            </Button>
+          </div>
+
           <Dialog open={isAddTopicOpen} onOpenChange={setIsAddTopicOpen}>
             <DialogTrigger asChild>
               <Button className="bg-cyan-600 text-white hover:bg-cyan-500">
@@ -326,140 +571,709 @@ export default function SubjectDetailPage() {
           </div>
         )}
 
-        <section className="grid gap-4 xl:grid-cols-4">
-          {TOPIC_STATUSES.map((status) => (
-            <div
-              key={status}
-              onDragEnter={(event) => {
-                event.preventDefault()
-                if (!draggingTopicId) return
-                setActiveDropStatus(status)
-              }}
-              onDragOver={(event) => {
-                event.preventDefault()
-                event.dataTransfer.dropEffect = 'move'
-                if (!draggingTopicId) return
-                if (activeDropStatus !== status) setActiveDropStatus(status)
-              }}
-              onDrop={async (event) => {
-                event.preventDefault()
-                if (!draggingTopicId) return
-                await moveTopicToStatus(draggingTopicId, status)
-                clearDragState()
-              }}
-              className={`min-h-[320px] rounded-2xl border bg-white/[0.04] p-3 transition ${
-                activeDropStatus === status
-                  ? 'border-cyan-300/50 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]'
-                  : 'border-white/10'
-              }`}
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white">
-                  {TOPIC_STATUS_LABEL[status]}
-                </h2>
-                <Badge className="bg-white/10 text-slate-300">
-                  {topicStats.byStatus[status].length}
-                </Badge>
-              </div>
+        {viewMode === 'kanban' && (
+          <section className="grid gap-4 xl:grid-cols-4">
+            {TOPIC_STATUSES.map((status) => (
+              <div
+                key={status}
+                onDragEnter={(event) => {
+                  event.preventDefault()
+                  if (!draggingTopicId) return
+                  setActiveDropStatus(status)
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                  if (!draggingTopicId) return
+                  if (activeDropStatus !== status) setActiveDropStatus(status)
+                }}
+                onDrop={async (event) => {
+                  event.preventDefault()
+                  if (!draggingTopicId) return
+                  await moveTopicToStatus(draggingTopicId, status)
+                  clearDragState()
+                }}
+                className={`min-h-[320px] rounded-2xl border bg-white/[0.04] p-3 transition ${
+                  activeDropStatus === status
+                    ? 'border-cyan-300/50 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]'
+                    : 'border-white/10'
+                }`}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-white">
+                    {TOPIC_STATUS_LABEL[status]}
+                  </h2>
+                  <Badge className="bg-white/10 text-slate-300">
+                    {topicStats.byStatus[status].length}
+                  </Badge>
+                </div>
 
-              <div className="space-y-2">
-                {topicStats.byStatus[status].map((topic) => {
-                  const relative = topicStats.strongest?.totalTime
-                    ? Math.max(
-                        8,
-                        Math.round(
-                          (topic.totalTime / topicStats.strongest.totalTime) *
-                            100
+                <div className="space-y-2">
+                  {topicStats.byStatus[status].map((topic) => {
+                    const relative = topicStats.strongest?.totalTime
+                      ? Math.max(
+                          8,
+                          Math.round(
+                            (topic.totalTime / topicStats.strongest.totalTime) *
+                              100
+                          )
                         )
-                      )
-                    : 8
+                      : 8
 
-                  return (
-                    <div
-                      key={topic.id}
-                      draggable
-                      onDragStart={(event) => onDragStartTopic(event, topic)}
-                      onDrag={onDragTopic}
-                      onDragEnd={clearDragState}
-                      className={`rounded-xl border border-white/10 bg-[#0d1627]/80 p-3 transition ${
-                        draggingTopicId === topic.id
-                          ? 'opacity-20'
-                          : 'opacity-100'
-                      }`}
-                    >
-                      <div className="mb-1.5 flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-white">
-                          {topic.name}
+                    return (
+                      <div
+                        key={topic.id}
+                        draggable
+                        onDragStart={(event) => onDragStartTopic(event, topic)}
+                        onDrag={onDragTopic}
+                        onDragEnd={clearDragState}
+                        className={`rounded-xl border border-white/10 bg-[#0d1627]/80 p-3 transition ${
+                          draggingTopicId === topic.id
+                            ? 'opacity-20'
+                            : 'opacity-100'
+                        }`}
+                      >
+                        <div className="mb-1.5 flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-white">
+                            {topic.name}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <GripVertical className="h-4 w-4 text-slate-500" />
+                            <Button
+                              variant="outline"
+                              className="h-7 border-red-400/35 bg-red-500/10 px-2 text-red-200 hover:bg-red-500/20"
+                              onClick={() =>
+                                setDeleteTopicState({
+                                  id: topic.id,
+                                  name: topic.name,
+                                })
+                              }
+                              disabled={deleteTopic.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+                          <span>{formatDuration(topic.totalTime)}</span>
+                          <span>{topic._count.sessions} sessions</span>
+                        </div>
+                        <Progress
+                          value={relative}
+                          className="h-2 bg-white/10"
+                        />
+
+                        <div className="mt-2 flex items-center gap-1">
+                          {status !== 'IN_PROGRESS' && (
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              className="h-6 bg-white/6 text-[11px] text-slate-300 hover:bg-white/12"
+                              onClick={() => onStartPomodoro(topic.id, status)}
+                            >
+                              Start timer
+                            </Button>
+                          )}
+                          {status === 'IN_PROGRESS' && (
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              className="h-6 bg-cyan-500/15 text-[11px] text-cyan-200 hover:bg-cyan-500/25"
+                              onClick={() => onStartPomodoro(topic.id, status)}
+                            >
+                              Open timer
+                            </Button>
+                          )}
+                          {status !== 'DONE' && (
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              className="h-6 bg-emerald-500/12 text-[11px] text-emerald-200 hover:bg-emerald-500/20"
+                              onClick={() =>
+                                moveTopicToStatus(topic.id, 'DONE')
+                              }
+                            >
+                              Done
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {topicStats.byStatus[status].length === 0 && (
+                    <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3 py-6 text-center text-xs text-slate-500">
+                      Drop topics here
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {viewMode === 'flashcards' && (
+          <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <CardContent className="space-y-5 px-4 py-5 sm:px-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold tracking-[0.16em] text-cyan-300 uppercase">
+                        Select Deck
+                      </p>
+                      <h2 className="text-lg font-bold text-white">
+                        Study cards
+                      </h2>
+                    </div>
+                    {decks.length > 3 && (
+                      <Link href={`/subjects/${subjectId}/decks`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-slate-400 transition-colors hover:text-cyan-300"
+                        >
+                          View all decks
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {decks.slice(0, 3).map((deck) => (
+                      <div
+                        key={deck.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          setFlashcardDeckId(deck.id)
+                          setStudyIndex(0)
+                          setShowAnswer(false)
+                          setTestActive(false)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setFlashcardDeckId(deck.id)
+                            setStudyIndex(0)
+                            setShowAnswer(false)
+                            setTestActive(false)
+                          }
+                        }}
+                        className={`group relative flex cursor-pointer flex-col items-start rounded-2xl border p-4 text-left transition-all duration-300 focus:ring-2 focus:ring-cyan-500/50 focus:outline-none ${
+                          resolvedFlashcardDeckId === deck.id
+                            ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.1)]'
+                            : 'border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <div
+                          className={`mb-3 rounded-xl p-2 transition-colors ${
+                            resolvedFlashcardDeckId === deck.id
+                              ? 'bg-cyan-500/20 text-cyan-400'
+                              : 'bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-slate-300'
+                          }`}
+                        >
+                          <BookOpen className="h-4 w-4" />
+                        </div>
+                        <span className="line-clamp-1 text-sm font-bold text-white transition-colors group-hover:text-cyan-300">
+                          {deck.name}
+                        </span>
+                        <p className="mt-1 text-[10px] tracking-widest text-slate-500 uppercase">
+                          {resolvedFlashcardDeckId === deck.id
+                            ? 'Active Deck'
+                            : 'Click to select'}
                         </p>
-                        <div className="flex items-center gap-1">
-                          <GripVertical className="h-4 w-4 text-slate-500" />
+                        <div className="absolute top-3 right-3 flex items-center gap-1">
+                          {resolvedFlashcardDeckId === deck.id && (
+                            <CheckCircle2 className="animate-in zoom-in-50 h-4 w-4 text-cyan-400 duration-300" />
+                          )}
+
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-slate-500 hover:bg-white/10 hover:text-white"
+                                >
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                className="w-40 border-white/10 bg-[#0f172a] text-slate-200"
+                              >
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setEditingDeck({
+                                      id: deck.id,
+                                      name: deck.name,
+                                    })
+                                  }
+                                  className="focus:bg-white/10 focus:text-white"
+                                >
+                                  <Edit2 className="mr-2 h-3.5 w-3.5" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setDeletingDeckId(deck.id)}
+                                  className="text-red-400 focus:bg-red-400/10 focus:text-red-400"
+                                >
+                                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {decks.length === 0 && (
+                      <div className="col-span-full rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center">
+                        <p className="text-xs tracking-widest text-slate-500 uppercase">
+                          No decks created yet
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {!flashcards.length ? (
+                  <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-8 text-center text-sm text-slate-400">
+                    No flashcards yet. Add your first card in the deck editor.
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-white/10 bg-[#0d1627]/80 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className="bg-white/10 text-slate-300">
+                          {flashcardStats.total} cards
+                        </Badge>
+                        <Badge className="bg-emerald-500/15 text-emerald-200">
+                          Mastered {flashcardStats.byStatus.MASTERED ?? 0}
+                        </Badge>
+                        <Badge className="bg-amber-500/15 text-amber-200">
+                          Review {flashcardStats.byStatus.REVIEW ?? 0}
+                        </Badge>
+                      </div>
+                      <Button
+                        className="bg-violet-600 text-white hover:bg-violet-500"
+                        onClick={() => {
+                          setStudyIndex(0)
+                          setShowAnswer(false)
+                          setIsStudyOpen(true)
+                        }}
+                      >
+                        Start study
+                      </Button>
+                    </div>
+                    <p className="mt-4 text-sm text-slate-300">
+                      Tap start to pop a card, flip it, and rate your recall.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-6">
+              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+                <CardContent className="space-y-4 px-4 py-5 sm:px-6">
+                  <div>
+                    <p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">
+                      Create cards
+                    </p>
+                    <h3 className="text-base font-bold text-white">
+                      Build a full flashcard set
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-400">
+                      Use the full editor to add multiple cards Quizlet-style.
+                    </p>
+                  </div>
+                  <Link
+                    href={`/subjects/${subjectId}/flashcards`}
+                    className="inline-flex"
+                  >
+                    <Button className="bg-violet-600 text-white hover:bg-violet-500">
+                      Open full editor
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+                <CardContent className="space-y-4 px-4 py-5 sm:px-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">
+                        Test mode
+                      </p>
+                      <h3 className="text-base font-bold text-white">
+                        Quick quiz
+                      </h3>
+                    </div>
+                    <Badge className="bg-white/10 text-slate-300">
+                      {flashcardStats.total} cards
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                    <span>Timer per question</span>
+                    <div className="flex items-center gap-2">
+                      {[10, 20, 30, 45].map((value) => (
+                        <button
+                          key={`quiz-timer-${value}`}
+                          onClick={() => setQuizSecondsPerQuestion(value)}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                            quizSecondsPerQuestion === value
+                              ? 'bg-cyan-500/20 text-cyan-100'
+                              : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                          }`}
+                        >
+                          {value}s
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {flashcards.length < 2 ? (
+                    <p className="text-sm text-slate-400">
+                      Add at least two cards to start a quiz.
+                    </p>
+                  ) : testActive ? (
+                    <p className="text-sm text-slate-400">
+                      Quiz running in a pop card. Finish there to see results.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        onClick={() => onStartTest(5)}
+                        className="bg-cyan-600 text-white hover:bg-cyan-500"
+                        disabled={!flashcards.length}
+                      >
+                        Start quick test
+                      </Button>
+                      <Button
+                        onClick={() => onStartTest(10)}
+                        variant="outline"
+                        className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                        disabled={!flashcards.length}
+                      >
+                        Full test
+                      </Button>
+                      {testItems.length > 0 && !testActive && (
+                        <Badge className="bg-emerald-500/20 text-emerald-200">
+                          Last score {testScore}/{testItems.length}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+                <CardContent className="space-y-3 px-4 py-5 sm:px-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold text-white">
+                      Card list
+                    </h3>
+                    <Badge className="bg-white/10 text-slate-300">
+                      {flashcards.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {flashcards.map((card) => (
+                      <div
+                        key={card.id}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-white">
+                              {card.question}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {card.answer}
+                            </p>
+                          </div>
                           <Button
                             variant="outline"
                             className="h-7 border-red-400/35 bg-red-500/10 px-2 text-red-200 hover:bg-red-500/20"
-                            onClick={() =>
-                              setDeleteTopicState({
-                                id: topic.id,
-                                name: topic.name,
-                              })
-                            }
-                            disabled={deleteTopic.isPending}
+                            onClick={() => deleteFlashcard.mutateAsync(card.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
+                    ))}
+                    {flashcards.length === 0 && (
+                      <p className="text-sm text-slate-400">No cards yet.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        )}
 
-                      <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
-                        <span>{formatDuration(topic.totalTime)}</span>
-                        <span>{topic._count.sessions} sessions</span>
+        {(isStudyOpen || isQuizOpen) && (
+          <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#050813]">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute top-[-140px] right-[-120px] h-[360px] w-[360px] rounded-full bg-violet-600/20 blur-[140px]" />
+              <div className="absolute bottom-[-160px] left-[-140px] h-[360px] w-[360px] rounded-full bg-cyan-500/14 blur-[140px]" />
+            </div>
+
+            <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.2em] text-cyan-300 uppercase">
+                    {isStudyOpen ? 'Study' : 'Quiz'}
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold text-white">
+                    {isStudyOpen ? 'Flashcard study' : 'Quick quiz'}
+                  </h2>
+                </div>
+                <Button
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                  onClick={() => {
+                    setIsStudyOpen(false)
+                    setIsQuizOpen(false)
+                    setTestActive(false)
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+
+              {isStudyOpen && (
+                <div className="rounded-2xl border border-white/10 bg-[#0d1627]/80 p-6">
+                  {!flashcards.length ? (
+                    <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center text-sm text-slate-400">
+                      No flashcards available for this topic yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-white/10 text-slate-300">
+                          {studyIndex + 1} / {flashcards.length}
+                        </Badge>
+                        <Badge className="bg-violet-500/20 text-violet-100">
+                          {activeStudyCard?.status ?? 'NEW'}
+                        </Badge>
                       </div>
-                      <Progress value={relative} className="h-2 bg-white/10" />
+                      <Progress
+                        value={Math.max(
+                          1,
+                          ((studyIndex + 1) / flashcards.length) * 100
+                        )}
+                        className="h-2 bg-white/10"
+                      />
 
-                      <div className="mt-2 flex items-center gap-1">
-                        {status !== 'IN_PROGRESS' && (
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            className="h-6 bg-white/6 text-[11px] text-slate-300 hover:bg-white/12"
-                            onClick={() => onStartPomodoro(topic.id, status)}
-                          >
-                            Start timer
-                          </Button>
+                      <div className="rounded-2xl border border-white/10 bg-[#121b30]/85 p-8">
+                        <p className="text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">
+                          Term
+                        </p>
+                        <p className="mt-4 text-3xl font-semibold text-white">
+                          {activeStudyCard?.question ?? 'No card selected'}
+                        </p>
+
+                        {showAnswer && (
+                          <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-5">
+                            <p className="text-xs text-slate-400">Definition</p>
+                            <p className="mt-2 text-base text-slate-100">
+                              {activeStudyCard?.answer}
+                            </p>
+                          </div>
                         )}
-                        {status === 'IN_PROGRESS' && (
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            className="h-6 bg-cyan-500/15 text-[11px] text-cyan-200 hover:bg-cyan-500/25"
-                            onClick={() => onStartPomodoro(topic.id, status)}
-                          >
-                            Open timer
-                          </Button>
-                        )}
-                        {status !== 'DONE' && (
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            className="h-6 bg-emerald-500/12 text-[11px] text-emerald-200 hover:bg-emerald-500/20"
-                            onClick={() => moveTopicToStatus(topic.id, 'DONE')}
-                          >
-                            Done
-                          </Button>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          className="h-9 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                          onClick={() => setShowAnswer((prev) => !prev)}
+                          disabled={!activeStudyCard}
+                        >
+                          {showAnswer ? 'Hide answer' : 'Show answer'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-9 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                          onClick={() => {
+                            setStudyIndex((prev) =>
+                              Math.min(
+                                prev + 1,
+                                Math.max(0, flashcards.length - 1)
+                              )
+                            )
+                            setShowAnswer(false)
+                          }}
+                          disabled={!activeStudyCard}
+                        >
+                          Next
+                        </Button>
+                        {showAnswer && activeStudyCard && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-rose-500/80 text-white hover:bg-rose-500"
+                              onClick={() =>
+                                onReviewFlashcard(activeStudyCard.id, 'REVIEW')
+                              }
+                            >
+                              Again
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-cyan-500/80 text-white hover:bg-cyan-500"
+                              onClick={() =>
+                                onReviewFlashcard(
+                                  activeStudyCard.id,
+                                  'LEARNING'
+                                )
+                              }
+                            >
+                              Good
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-emerald-500/80 text-white hover:bg-emerald-500"
+                              onClick={() =>
+                                onReviewFlashcard(
+                                  activeStudyCard.id,
+                                  'MASTERED'
+                                )
+                              }
+                            >
+                              Easy
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
-                  )
-                })}
+                  )}
+                </div>
+              )}
 
-                {topicStats.byStatus[status].length === 0 && (
-                  <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3 py-6 text-center text-xs text-slate-500">
-                    Drop topics here
-                  </div>
-                )}
-              </div>
+              {isQuizOpen && (
+                <div className="rounded-2xl border border-white/10 bg-[#0d1627]/80 p-6">
+                  {flashcards.length < 2 ? (
+                    <p className="text-sm text-slate-400">
+                      Add at least two cards to start a quiz.
+                    </p>
+                  ) : testActive ? (
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-white/10 text-slate-300">
+                          {testIndex + 1} / {testItems.length}
+                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-slate-700/40 text-slate-200">
+                            {quizTimeLeft}s
+                          </Badge>
+                          <Badge className="bg-emerald-500/15 text-emerald-200">
+                            Score {testScore}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Progress
+                        value={Math.max(
+                          1,
+                          ((testIndex + 1) / testItems.length) * 100
+                        )}
+                        className="h-2 bg-white/10"
+                      />
+
+                      <div className="rounded-2xl border border-white/10 bg-[#121b30]/85 p-8">
+                        <p className="text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">
+                          Term
+                        </p>
+                        <p className="mt-4 text-2xl font-semibold text-white">
+                          {testItems[testIndex]?.question}
+                        </p>
+                        <p className="mt-6 text-xs tracking-[0.18em] text-slate-400 uppercase">
+                          Choose an answer
+                        </p>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {(testItems[testIndex]?.choices ?? []).map(
+                            (choice, idx) => (
+                              <button
+                                key={`${choice}-${idx}`}
+                                onClick={() => onSelectTestChoice(choice)}
+                                className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/10"
+                              >
+                                <span className="mr-2 text-xs text-slate-400">
+                                  {idx + 1}
+                                </span>
+                                {choice}
+                              </button>
+                            )
+                          )}
+                        </div>
+                        <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+                          <span>Not sure?</span>
+                          <button
+                            className="text-cyan-300 hover:text-cyan-200"
+                            onClick={() => onSelectTestChoice('')}
+                          >
+                            Skip
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                          onClick={() => setTestActive(false)}
+                        >
+                          End test
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                      <p className="text-sm text-slate-300">
+                        Last score: {testScore}/{testItems.length}
+                      </p>
+                      <div className="mt-4 space-y-2">
+                        {testItems.map((item, index) => (
+                          <div
+                            key={item.id}
+                            className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2"
+                          >
+                            <p className="text-xs text-slate-400">
+                              {index + 1}. {item.question}
+                            </p>
+                            <p className="mt-1 text-sm text-emerald-200">
+                              {item.answer}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Button
+                          onClick={() => onStartTest(5)}
+                          className="bg-cyan-600 text-white hover:bg-cyan-500"
+                        >
+                          Restart quick test
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                          onClick={() => setIsQuizOpen(false)}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          ))}
-        </section>
+          </div>
+        )}
 
         <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
           <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
@@ -548,6 +1362,59 @@ export default function SubjectDetailPage() {
           if (!deleteTopicState) return
           void onDeleteTopic(deleteTopicState.id, deleteTopicState.name)
         }}
+      />
+
+      <Dialog
+        open={!!editingDeck}
+        onOpenChange={(open) => !open && setEditingDeck(null)}
+      >
+        <DialogContent className="border-white/10 bg-[#0f172a] text-slate-200">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-white">
+              Rename Deck
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Enter a new name for this card deck.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={editingDeck?.name ?? ''}
+              onChange={(e) =>
+                setEditingDeck((prev) =>
+                  prev ? { ...prev, name: e.target.value } : null
+                )
+              }
+              className="border-white/10 bg-white/5 text-white"
+              onKeyDown={(e) => e.key === 'Enter' && onUpdateDeck()}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setEditingDeck(null)}
+              className="text-slate-400 hover:bg-white/5 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={onUpdateDeck}
+              className="bg-cyan-600 text-white hover:bg-cyan-500"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmActionDialog
+        open={!!deletingDeckId}
+        onOpenChange={(open) => !open && setDeletingDeckId(null)}
+        onConfirm={onDeleteDeck}
+        title="Delete Deck?"
+        description="This will permanently remove the deck and all flashcards inside it. This action cannot be undone."
+        confirmLabel="Delete Deck"
+        pending={deleteDeck.isPending}
       />
     </div>
   )

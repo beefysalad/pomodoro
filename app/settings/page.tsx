@@ -247,11 +247,11 @@ export default function SettingsPage() {
                   Integrations
                 </p>
                 <h2 className="mt-1 text-xl font-black text-white">
-                  Spotify (POC)
+                  Spotify (FUTURE FEATURE)
                 </h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  Boilerplate connect flow for future focus playlists and
-                  session audio controls.
+                  Connect flow for future focus playlists and session audio
+                  controls.
                 </p>
               </div>
               {spotifyState.connected ? (
@@ -292,11 +292,12 @@ export default function SettingsPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               <Button
+                disabled={true}
                 type="button"
                 onClick={onSpotifyConnect}
-                disabled={
-                  spotifyState.isLoading || spotifyState.isDisconnecting
-                }
+                // disabled={
+                //   spotifyState.isLoading || spotifyState.isDisconnecting
+                // }
                 className="bg-emerald-600 text-white hover:bg-emerald-500"
               >
                 <Link2 className="h-4 w-4" />

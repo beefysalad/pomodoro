@@ -14,26 +14,26 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  firstName     String?
-  lastName      String?
-  clerkUserId   String    @unique
-  email         String    @unique
-  timezone      String    @default("UTC")
-  blitzMinutes  Int       @default(10)
-  focusMinutes  Int       @default(25)
-  deepMinutes   Int       @default(50)
-  shortBreakMinutes Int   @default(5)
-  longBreakMinutes  Int   @default(10)
-  totalXP       Int       @default(0)
-  streak        Int       @default(0)
-  onboarded     Boolean   @default(false)
-  lastStudiedAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  firstName         String?
+  lastName          String?
+  clerkUserId       String    @unique
+  email             String    @unique
+  timezone          String    @default("UTC")
+  blitzMinutes      Int       @default(10)
+  focusMinutes      Int       @default(25)
+  deepMinutes       Int       @default(50)
+  shortBreakMinutes Int       @default(5)
+  longBreakMinutes  Int       @default(10)
+  totalXP           Int       @default(0)
+  streak            Int       @default(0)
+  onboarded         Boolean   @default(false)
+  lastStudiedAt     DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  subjects Subject[]
-  sessions Session[]
+  subjects                   Subject[]
+  sessions                   Session[]
   weeklyLeaderboardSnapshots WeeklyLeaderboardSnapshot[]
 }
 
@@ -49,23 +49,24 @@ model Subject {
   icon      String?
   slug      String?  @unique
 
-  topics Topic[]
+  topics         Topic[]
+  flashcardDecks FlashcardDeck[]
 }
 
 model Topic {
-  id           String   @id @default(cuid())
-  subjectId    String
-  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  name         String
-  status       String   @default("BACKLOG")
-  statusUpdatedAt DateTime @default(now())
-  doneAt       DateTime?
-  position     Int      @default(0)
-  totalTime    Int      @default(0) // in seconds
-  sessionCount Int      @default(0)
-  lastRating   Int? // 1-3
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String    @id @default(cuid())
+  subjectId       String
+  subject         Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name            String
+  status          String    @default("BACKLOG")
+  statusUpdatedAt DateTime  @default(now())
+  doneAt          DateTime?
+  position        Int       @default(0)
+  totalTime       Int       @default(0) // in seconds
+  sessionCount    Int       @default(0)
+  lastRating      Int? // 1-3
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   sessions Session[]
 }
@@ -98,4 +99,33 @@ model WeeklyLeaderboardSnapshot {
   @@unique([weekStart, userId])
   @@index([weekStart, rank])
   @@index([userId, weekStart])
+}
+
+model FlashcardDeck {
+  id        String   @id @default(cuid())
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards Flashcard[]
+
+  @@index([subjectId, name])
+}
+
+model Flashcard {
+  id             String        @id @default(cuid())
+  deckId         String
+  deck           FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  question       String
+  answer         String
+  hint           String?
+  choices        String[]      @default([])
+  status         String        @default("NEW")
+  lastReviewedAt DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([deckId, status])
 }
