@@ -8,6 +8,7 @@ export const UpdateUserSchemaApi = z.object({
   deepMinutes: z.number().int().min(15).max(240).optional(),
   shortBreakMinutes: z.number().int().min(1).max(30).optional(),
   longBreakMinutes: z.number().int().min(5).max(60).optional(),
+  hasSeenTutorial: z.boolean().optional(),
 })
 
 export type TUpdateUserSchemaApi = z.infer<typeof UpdateUserSchemaApi>

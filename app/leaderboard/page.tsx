@@ -46,8 +46,14 @@ export default function LeaderboardPage() {
           </Card>
         ) : (
           <>
-            <section className="grid gap-4 lg:grid-cols-2">
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+            <section
+              id="tutorial-leaderboard-overview"
+              className="grid gap-4 lg:grid-cols-2"
+            >
+              <Card
+                id="tutorial-leaderboard-global-rank"
+                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+              >
                 <CardContent className="space-y-3 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
                     <h2 className="inline-flex items-center gap-2 text-base font-bold text-white">
@@ -68,7 +74,10 @@ export default function LeaderboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <Card
+                id="tutorial-leaderboard-weekly-rank"
+                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+              >
                 <CardContent className="space-y-3 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
                     <h2 className="inline-flex items-center gap-2 text-base font-bold text-white">
@@ -91,7 +100,10 @@ export default function LeaderboardPage() {
             </section>
 
             <section className="grid gap-6 xl:grid-cols-2">
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <Card
+                id="tutorial-leaderboard-global-list"
+                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+              >
                 <CardContent className="space-y-4 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
                     <h2 className="inline-flex items-center gap-2 text-lg font-bold text-white">
@@ -129,7 +141,10 @@ export default function LeaderboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <Card
+                id="tutorial-leaderboard-weekly-list"
+                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+              >
                 <CardContent className="space-y-4 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
                     <h2 className="inline-flex items-center gap-2 text-lg font-bold text-white">

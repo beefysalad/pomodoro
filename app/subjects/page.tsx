@@ -80,8 +80,9 @@ export default function SubjectsPage() {
             0
           ),
           doneTopics: topics.filter((topic) => topic.status === 'DONE').length,
-          inProgressTopics: topics.filter((topic) => topic.status === 'IN_PROGRESS')
-            .length,
+          inProgressTopics: topics.filter(
+            (topic) => topic.status === 'IN_PROGRESS'
+          ).length,
         }
       }),
     [subjects, topicQueries]
@@ -142,11 +143,15 @@ export default function SubjectsPage() {
               Organize your study universe
             </h1>
             <p className="mt-2 text-sm text-slate-400">
-              Each subject contains focused topics. Track momentum and drill into details per subject.
+              Each subject contains focused topics. Track momentum and drill
+              into details per subject.
             </p>
           </div>
 
-          <Dialog open={isCreateSubjectOpen} onOpenChange={setIsCreateSubjectOpen}>
+          <Dialog
+            open={isCreateSubjectOpen}
+            onOpenChange={setIsCreateSubjectOpen}
+          >
             <DialogTrigger asChild>
               <Button className="bg-violet-600 text-white hover:bg-violet-500">
                 <Plus className="h-4 w-4" />
@@ -183,7 +188,10 @@ export default function SubjectsPage() {
           </Dialog>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+          id="tutorial-subject-list"
+        >
           {!!pageMessage && (
             <div className="col-span-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
               {pageMessage}
@@ -198,7 +206,7 @@ export default function SubjectsPage() {
               </CardContent>
             </Card>
           ) : (
-            enrichedSubjects.map((subject) => (
+            enrichedSubjects.map((subject, index) => (
               <Card
                 key={subject.id}
                 className="h-full border-white/10 bg-white/[0.05] py-0 transition hover:border-violet-400/40 hover:bg-white/[0.08]"
@@ -214,7 +222,9 @@ export default function SubjectsPage() {
                     </Badge>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white">{subject.name}</h3>
+                  <h3 className="text-lg font-bold text-white">
+                    {subject.name}
+                  </h3>
 
                   <div className="space-y-1.5 text-sm text-slate-300">
                     <p className="inline-flex items-center gap-2">
@@ -232,7 +242,9 @@ export default function SubjectsPage() {
                       <span>Completion</span>
                       <span>
                         {subject.topicCount
-                          ? Math.round((subject.doneTopics / subject.topicCount) * 100)
+                          ? Math.round(
+                              (subject.doneTopics / subject.topicCount) * 100
+                            )
                           : 0}
                         %
                       </span>
@@ -262,7 +274,10 @@ export default function SubjectsPage() {
                       asChild
                       className="h-9 flex-1 bg-cyan-600 text-white hover:bg-cyan-500"
                     >
-                      <Link href={`/subjects/${subject.id}`}>
+                      <Link
+                        href={`/subjects/${subject.id}`}
+                        id={index === 0 ? 'tutorial-subject-first' : undefined}
+                      >
                         Open subject <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </Button>
@@ -278,7 +293,10 @@ export default function SubjectsPage() {
                       variant="outline"
                       className="h-9 border-red-400/35 bg-red-500/10 text-red-200 hover:bg-red-500/20"
                       onClick={() =>
-                        setDeleteSubjectState({ id: subject.id, name: subject.name })
+                        setDeleteSubjectState({
+                          id: subject.id,
+                          name: subject.name,
+                        })
                       }
                       disabled={deleteSubject.isPending}
                     >
