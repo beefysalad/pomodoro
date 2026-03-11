@@ -27,6 +27,7 @@ import { useCompleteSession } from '@/hooks/use-sessions'
 import { useSubjects } from '@/hooks/use-subjects'
 import { useSubjectTopics, useUpdateTopic } from '@/hooks/use-topics'
 import { useUser } from '@/hooks/use-user'
+import { useQuote } from '@/hooks/use-quote'
 import { TOPIC_STATUS_LABEL } from '@/lib/topic-status'
 
 const MODE_META: Record<
@@ -66,6 +67,14 @@ const BREAK_SECONDS = (shortBreakMinutes: number, longBreakMinutes: number) => (
   long: longBreakMinutes * 60,
 })
 
+const DEV_TIMER_MINUTES = {
+  blitz: 0.25,
+  focus: 0.5,
+  deep: 1,
+  shortBreak: 0.1,
+  longBreak: 0.2,
+} as const
+
 function pad(value: number) {
   return String(value).padStart(2, '0')
 }
@@ -77,14 +86,20 @@ function formatClock(seconds: number) {
 }
 
 export default function DashboardPage() {
+  const [devTimerFlag] = useState(() =>
+    typeof window !== 'undefined' ? window.location.search : ''
+  )
   const { data: user } = useUser()
   const { data: subjects = [] } = useSubjects()
+  const { data: quote } = useQuote()
   const completeSession = useCompleteSession()
   const updateTopic = useUpdateTopic()
   const timer = useTimer()
 
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [pageMessage, setPageMessage] = useState('')
+
+  const isDevTimer = devTimerFlag.includes('devTimer=1')
 
   const {
     activeSubjectId,
@@ -113,8 +128,28 @@ export default function DashboardPage() {
   const pendingReview = phase === 'focus' && finished
   const forceCompletionFocus = finished
 
-  const modeConfig = useMemo(
-    () => ({
+  const modeConfig = useMemo(() => {
+    if (isDevTimer) {
+      return {
+        blitz: {
+          ...MODE_META.blitz,
+          minutes: DEV_TIMER_MINUTES.blitz,
+          seconds: Math.round(DEV_TIMER_MINUTES.blitz * 60),
+        },
+        focus: {
+          ...MODE_META.focus,
+          minutes: DEV_TIMER_MINUTES.focus,
+          seconds: Math.round(DEV_TIMER_MINUTES.focus * 60),
+        },
+        deep: {
+          ...MODE_META.deep,
+          minutes: DEV_TIMER_MINUTES.deep,
+          seconds: Math.round(DEV_TIMER_MINUTES.deep * 60),
+        },
+      }
+    }
+
+    return {
       blitz: {
         ...MODE_META.blitz,
         minutes: user?.blitzMinutes ?? DEFAULT_TIMER_MINUTES.blitz,
@@ -130,15 +165,16 @@ export default function DashboardPage() {
         minutes: user?.deepMinutes ?? DEFAULT_TIMER_MINUTES.deep,
         seconds: (user?.deepMinutes ?? DEFAULT_TIMER_MINUTES.deep) * 60,
       },
-    }),
-    [user?.blitzMinutes, user?.focusMinutes, user?.deepMinutes]
-  )
+    }
+  }, [isDevTimer, user?.blitzMinutes, user?.focusMinutes, user?.deepMinutes])
 
   const activeMode = modeConfig[mode]
-  const breakSeconds = BREAK_SECONDS(
-    user?.shortBreakMinutes ?? DEFAULT_TIMER_MINUTES.shortBreak,
-    user?.longBreakMinutes ?? DEFAULT_TIMER_MINUTES.longBreak
-  )
+  const breakSeconds = isDevTimer
+    ? BREAK_SECONDS(DEV_TIMER_MINUTES.shortBreak, DEV_TIMER_MINUTES.longBreak)
+    : BREAK_SECONDS(
+        user?.shortBreakMinutes ?? DEFAULT_TIMER_MINUTES.shortBreak,
+        user?.longBreakMinutes ?? DEFAULT_TIMER_MINUTES.longBreak
+      )
   const totalSeconds =
     phase === 'focus' ? activeMode.seconds : breakSeconds[breakLength]
 
@@ -660,6 +696,23 @@ export default function DashboardPage() {
                   remaining={timerRemaining}
                   large
                 />
+
+                {!!quote && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    className="max-w-2xl rounded-2xl border border-white/10 bg-gradient-to-r from-white/8 via-white/4 to-transparent px-5 py-4 text-center text-sm text-slate-200 shadow-[0_0_30px_rgba(15,23,42,0.35)]"
+                  >
+                    <p className="text-[11px] font-semibold tracking-[0.18em] text-cyan-300 uppercase">
+                      Focus mantra
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-white">
+                      &ldquo;{quote.text}&rdquo;
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">— {quote.author}</p>
+                  </motion.div>
+                )}
 
                 {!pendingReview ? (
                   <div className="flex flex-wrap items-center justify-center gap-2">

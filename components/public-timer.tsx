@@ -63,6 +63,7 @@ export function PublicTimer({
   const shouldNotifyCompletionRef = useRef(false)
   const deadlineRef = useRef<number | null>(null)
   const remainingRef = useRef(remaining)
+  const completionAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const config = MODE_CONFIG[mode]
   const total = config.seconds
@@ -77,6 +78,7 @@ export function PublicTimer({
   useEffect(() => {
     remainingRef.current = remaining
   }, [remaining])
+
 
   useEffect(() => {
     if (!running) return
@@ -163,6 +165,17 @@ export function PublicTimer({
         body: 'Demo session finished. Jump back in or sign up to track progress.',
       })
     }
+    const audio = new Audio('/timer.wav')
+    audio.loop = true
+    completionAudioRef.current = audio
+    void audio.play().catch(() => undefined)
+  }, [finished])
+
+  useEffect(() => {
+    if (finished) return
+    if (!completionAudioRef.current) return
+    completionAudioRef.current.pause()
+    completionAudioRef.current = null
   }, [finished])
 
   useEffect(() => {
