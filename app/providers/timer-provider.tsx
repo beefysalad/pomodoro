@@ -102,11 +102,13 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const shouldNotifyCompletionRef = useRef(false)
   const deadlineRef = useRef<number | null>(null)
   const remainingRef = useRef(remaining)
+  const completionAudioRef = useRef<HTMLAudioElement | null>(null)
   const storageKey = userId ? `${STORAGE_KEY_PREFIX}:${userId}` : null
 
   useEffect(() => {
     remainingRef.current = remaining
   }, [remaining])
+
 
   useEffect(() => {
     if (!isLoaded) return
@@ -300,7 +302,19 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         : 'Break finished. Ready for your next focus session.'
       new Notification(title, { body })
     }
+
+    const audio = new Audio('/timer.wav')
+    audio.loop = true
+    completionAudioRef.current = audio
+    void audio.play().catch(() => undefined)
   }, [finished, phase])
+
+  useEffect(() => {
+    if (finished) return
+    if (!completionAudioRef.current) return
+    completionAudioRef.current.pause()
+    completionAudioRef.current = null
+  }, [finished])
 
   useEffect(() => {
     return () => {
