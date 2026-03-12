@@ -51,6 +51,7 @@ export default function FlashcardCreatePage() {
     },
   ])
   const [importText, setImportText] = useState('')
+  const [importOpen, setImportOpen] = useState(false)
 
   const { data: decks = [] } = useFlashcardDecks(subjectId)
   const [deckId, setDeckId] = useState('')
@@ -332,33 +333,54 @@ export default function FlashcardCreatePage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">
-                        Import
+                        Optional
                       </p>
                       <h3 className="text-base font-bold text-white">
-                        Paste Q/A
+                        Bulk import (paste Q/A)
                       </h3>
                       <p className="text-xs text-slate-400">
-                        One per line:{' '}
-                        <span className="text-slate-200">
-                          Term | Answer | choice1 | choice2 | choice3
-                        </span>
+                        If you already have cards, paste them here. Otherwise,
+                        skip and add manually below.
                       </p>
                     </div>
                     <Button
                       variant="outline"
                       className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                      onClick={importFromText}
-                      disabled={!importText.trim()}
+                      onClick={() => setImportOpen((open) => !open)}
                     >
-                      Import
+                      {importOpen ? 'Hide' : 'Show'} import
                     </Button>
                   </div>
-                  <textarea
-                    value={importText}
-                    onChange={(event) => setImportText(event.target.value)}
-                    placeholder="What is 1 + 1? | 2 | 1 | 3 | 4"
-                    className="min-h-[120px] w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
-                  />
+
+                  {importOpen && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-slate-500">
+                        Format:{' '}
+                        <span className="text-slate-300">
+                          Term | Answer | choice1 | choice2 | choice3
+                        </span>
+                      </p>
+                      <textarea
+                        value={importText}
+                        onChange={(event) => setImportText(event.target.value)}
+                        placeholder="What is 1 + 1? | 2 | 1 | 3 | 4"
+                        className="min-h-[120px] w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
+                          Tip: paste many lines. Each line becomes one card.
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                          onClick={importFromText}
+                          disabled={!importText.trim()}
+                        >
+                          Import now
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
