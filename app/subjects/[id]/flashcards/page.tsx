@@ -356,7 +356,7 @@ export default function FlashcardCreatePage() {
                   <textarea
                     value={importText}
                     onChange={(event) => setImportText(event.target.value)}
-                    placeholder="What is JavaScript? | A scripting language for the web | Used in browsers | Interpreted\nReact | UI library | Component-based | Virtual DOM"
+                    placeholder="What is 1 + 1? | 2 | 1 | 3 | 4"
                     className="min-h-[120px] w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
                   />
                 </CardContent>

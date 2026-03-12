@@ -1,12 +1,51 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useForm, type UseFormRegisterReturn } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle2, Link2, Loader2, Save, Timer, Unplug } from 'lucide-react'
 import { AppHeader } from '@/components/app-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useUpdateUser, useUser } from '@/hooks/use-user'
+
+const timerSchema = z
+  .object({
+    blitzMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(5).max(120)
+    ),
+    focusMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(10).max(180)
+    ),
+    deepMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(15).max(240)
+    ),
+    shortBreakMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(1).max(30)
+    ),
+    longBreakMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(5).max(60)
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (data.longBreakMinutes < data.shortBreakMinutes) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Long break should be greater than or equal to short break.',
+        path: ['longBreakMinutes'],
+      })
+    }
+  })
+
+type TimerFormInput = z.input<typeof timerSchema>
+type TimerFormValues = z.output<typeof timerSchema>
 
 export default function SettingsPage() {
   const { data: user, isLoading } = useUser()
@@ -17,31 +56,29 @@ export default function SettingsPage() {
   })
   const [settingsMessage, setSettingsMessage] = useState('')
 
-  const [blitzMinutes, setBlitzMinutes] = useState(
-    user?.blitzMinutes?.toString() ?? ''
-  )
-  const [focusMinutes, setFocusMinutes] = useState(
-    user?.focusMinutes?.toString() ?? ''
-  )
-  const [deepMinutes, setDeepMinutes] = useState(
-    user?.deepMinutes?.toString() ?? ''
-  )
-  const [shortBreakMinutes, setShortBreakMinutes] = useState(
-    user?.shortBreakMinutes?.toString() ?? ''
-  )
-  const [longBreakMinutes, setLongBreakMinutes] = useState(
-    user?.longBreakMinutes?.toString() ?? ''
-  )
-  const effectiveBlitz = blitzMinutes || String(user?.blitzMinutes ?? 10)
-  const effectiveFocus = focusMinutes || String(user?.focusMinutes ?? 25)
-  const effectiveDeep = deepMinutes || String(user?.deepMinutes ?? 50)
-  const effectiveShortBreak =
-    shortBreakMinutes || String(user?.shortBreakMinutes ?? 5)
-  const effectiveLongBreak =
-    longBreakMinutes || String(user?.longBreakMinutes ?? 10)
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<TimerFormInput, unknown, TimerFormValues>({
+    resolver: zodResolver(timerSchema),
+    defaultValues: {
+      blitzMinutes: user?.blitzMinutes ?? 10,
+      focusMinutes: user?.focusMinutes ?? 25,
+      deepMinutes: user?.deepMinutes ?? 50,
+      shortBreakMinutes: user?.shortBreakMinutes ?? 5,
+      longBreakMinutes: user?.longBreakMinutes ?? 10,
+    },
+  })
   const isBusy = useMemo(
-    () => isLoading || updateUser.isPending || spotifyState.isDisconnecting,
-    [isLoading, updateUser.isPending, spotifyState.isDisconnecting]
+    () =>
+      isLoading ||
+      isSubmitting ||
+      updateUser.isPending ||
+      spotifyState.isDisconnecting,
+    [isLoading, isSubmitting, updateUser.isPending, spotifyState.isDisconnecting]
   )
 
   useEffect(() => {
@@ -70,53 +107,36 @@ export default function SettingsPage() {
     void loadSpotifyStatus()
   }, [])
 
-  const onSave = async () => {
-    const blitz = Number(effectiveBlitz)
-    const focus = Number(effectiveFocus)
-    const deep = Number(effectiveDeep)
-    const shortBreak = Number(effectiveShortBreak)
-    const longBreak = Number(effectiveLongBreak)
+  useEffect(() => {
+    if (!user) return
+    reset({
+      blitzMinutes: user.blitzMinutes ?? 10,
+      focusMinutes: user.focusMinutes ?? 25,
+      deepMinutes: user.deepMinutes ?? 50,
+      shortBreakMinutes: user.shortBreakMinutes ?? 5,
+      longBreakMinutes: user.longBreakMinutes ?? 10,
+    })
+  }, [reset, user])
 
-    if (!Number.isFinite(blitz) || blitz < 5 || blitz > 120) {
-      setSettingsMessage('Blitz must be between 5 and 120 minutes.')
-      return
+  const onSave = handleSubmit(
+    async (values) => {
+      try {
+        await updateUser.mutateAsync({
+          blitzMinutes: values.blitzMinutes,
+          focusMinutes: values.focusMinutes,
+          deepMinutes: values.deepMinutes,
+          shortBreakMinutes: values.shortBreakMinutes,
+          longBreakMinutes: values.longBreakMinutes,
+        })
+        setSettingsMessage('Timer settings saved.')
+      } catch {
+        setSettingsMessage('Could not save settings.')
+      }
+    },
+    () => {
+      setSettingsMessage('Fix the highlighted fields and try again.')
     }
-    if (!Number.isFinite(focus) || focus < 10 || focus > 180) {
-      setSettingsMessage('Focus must be between 10 and 180 minutes.')
-      return
-    }
-    if (!Number.isFinite(deep) || deep < 15 || deep > 240) {
-      setSettingsMessage('Deep must be between 15 and 240 minutes.')
-      return
-    }
-    if (!Number.isFinite(shortBreak) || shortBreak < 1 || shortBreak > 30) {
-      setSettingsMessage('Short break must be between 1 and 30 minutes.')
-      return
-    }
-    if (!Number.isFinite(longBreak) || longBreak < 5 || longBreak > 60) {
-      setSettingsMessage('Long break must be between 5 and 60 minutes.')
-      return
-    }
-    if (longBreak < shortBreak) {
-      setSettingsMessage(
-        'Long break should be greater than or equal to short break.'
-      )
-      return
-    }
-
-    try {
-      await updateUser.mutateAsync({
-        blitzMinutes: blitz,
-        focusMinutes: focus,
-        deepMinutes: deep,
-        shortBreakMinutes: shortBreak,
-        longBreakMinutes: longBreak,
-      })
-      setSettingsMessage('Timer settings saved.')
-    } catch {
-      setSettingsMessage('Could not save settings.')
-    }
-  }
+  )
 
   const onSpotifyConnect = () => {
     window.location.href = '/api/integrations/spotify/start'
@@ -178,23 +198,23 @@ export default function SettingsPage() {
               <SettingField
                 label="Blitz"
                 hint="5 to 120 min"
-                value={effectiveBlitz}
-                onChange={setBlitzMinutes}
-                disabled={isLoading || updateUser.isPending}
+                registration={register('blitzMinutes')}
+                error={errors.blitzMinutes?.message}
+                disabled={isBusy}
               />
               <SettingField
                 label="Focus"
                 hint="10 to 180 min"
-                value={effectiveFocus}
-                onChange={setFocusMinutes}
-                disabled={isLoading || updateUser.isPending}
+                registration={register('focusMinutes')}
+                error={errors.focusMinutes?.message}
+                disabled={isBusy}
               />
               <SettingField
                 label="Deep"
                 hint="15 to 240 min"
-                value={effectiveDeep}
-                onChange={setDeepMinutes}
-                disabled={isLoading || updateUser.isPending}
+                registration={register('deepMinutes')}
+                error={errors.deepMinutes?.message}
+                disabled={isBusy}
               />
             </div>
 
@@ -202,16 +222,16 @@ export default function SettingsPage() {
               <SettingField
                 label="Short break"
                 hint="1 to 30 min"
-                value={effectiveShortBreak}
-                onChange={setShortBreakMinutes}
-                disabled={isLoading || updateUser.isPending}
+                registration={register('shortBreakMinutes')}
+                error={errors.shortBreakMinutes?.message}
+                disabled={isBusy}
               />
               <SettingField
                 label="Long break"
                 hint="5 to 60 min"
-                value={effectiveLongBreak}
-                onChange={setLongBreakMinutes}
-                disabled={isLoading || updateUser.isPending}
+                registration={register('longBreakMinutes')}
+                error={errors.longBreakMinutes?.message}
+                disabled={isBusy}
               />
             </div>
 
@@ -221,10 +241,11 @@ export default function SettingsPage() {
                 Current preview
               </span>
               <p className="mt-1">
-                Blitz {effectiveBlitz || '-'}m · Focus {effectiveFocus || '-'}m
-                · Deep {effectiveDeep || '-'}m · Short break{' '}
-                {effectiveShortBreak || '-'}m · Long break{' '}
-                {effectiveLongBreak || '-'}m
+                Blitz {String(watch('blitzMinutes') || '-')}m · Focus{' '}
+                {String(watch('focusMinutes') || '-')}m · Deep{' '}
+                {String(watch('deepMinutes') || '-')}m · Short break{' '}
+                {String(watch('shortBreakMinutes') || '-')}m · Long break{' '}
+                {String(watch('longBreakMinutes') || '-')}m
               </p>
             </div>
 
@@ -349,14 +370,14 @@ type SpotifyStatus = {
 function SettingField({
   label,
   hint,
-  value,
-  onChange,
+  registration,
+  error,
   disabled,
 }: {
   label: string
   hint: string
-  value: string
-  onChange: (value: string) => void
+  registration: UseFormRegisterReturn
+  error?: string
   disabled?: boolean
 }) {
   return (
@@ -366,13 +387,15 @@ function SettingField({
       </label>
       <Input
         type="number"
-        min={1}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        inputMode="numeric"
+        placeholder={hint}
+        {...registration}
         disabled={disabled}
         className="border-white/15 bg-white/5 text-white placeholder:text-slate-500"
       />
-      <p className="text-xs text-slate-400">{hint}</p>
+      <p className={error ? 'text-xs text-rose-300' : 'text-xs text-slate-400'}>
+        {error ?? hint}
+      </p>
     </div>
   )
 }
