@@ -121,6 +121,9 @@ export default function SubjectDetailPage() {
   >([])
   const [testIndex, setTestIndex] = useState(0)
   const [testScore, setTestScore] = useState(0)
+  const [testResponses, setTestResponses] = useState<Record<string, string>>(
+    {}
+  )
   const [quizTimeLeft, setQuizTimeLeft] = useState(20)
   const [quizSecondsPerQuestion, setQuizSecondsPerQuestion] = useState(20)
   const quizDeadlineRef = useRef<number | null>(null)
@@ -314,6 +317,8 @@ export default function SubjectDetailPage() {
     }
   }
 
+  const normalizeAnswer = (value: string) => value.trim().toLowerCase()
+
   const onStartTest = (count: number) => {
     const base = shuffle(
       flashcards.map((card) => ({
@@ -341,6 +346,7 @@ export default function SubjectDetailPage() {
     setTestItems(items)
     setTestIndex(0)
     setTestScore(0)
+    setTestResponses({})
     setTestActive(true)
     setIsQuizOpen(true)
     setQuizTimeLeft(quizSecondsPerQuestion)
@@ -351,7 +357,8 @@ export default function SubjectDetailPage() {
     if (!testActive) return
     const current = testItems[testIndex]
     if (!current) return
-    if (choice.trim().toLowerCase() === current.answer.trim().toLowerCase()) {
+    setTestResponses((prev) => ({ ...prev, [current.id]: choice }))
+    if (normalizeAnswer(choice) === normalizeAnswer(current.answer)) {
       setTestScore((prev) => prev + 1)
     }
     const nextIndex = testIndex + 1
@@ -378,6 +385,14 @@ export default function SubjectDetailPage() {
       setQuizTimeLeft((prev) => (prev === next ? prev : next))
 
       if (next === 0) {
+        const timedOutItem = testItemsRef.current[testIndexRef.current]
+        if (timedOutItem) {
+          setTestResponses((prev) =>
+            prev[timedOutItem.id] === undefined
+              ? { ...prev, [timedOutItem.id]: '' }
+              : prev
+          )
+        }
         setTestIndex((prev) => {
           const total = testItemsRef.current.length
           const nextIndex = prev + 1
@@ -966,7 +981,7 @@ export default function SubjectDetailPage() {
                         Start quick test
                       </Button>
                       <Button
-                        onClick={() => onStartTest(10)}
+                        onClick={() => onStartTest(flashcards.length)}
                         variant="outline"
                         className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
                         disabled={!flashcards.length}
@@ -1250,19 +1265,50 @@ export default function SubjectDetailPage() {
                         Last score: {testScore}/{testItems.length}
                       </p>
                       <div className="mt-4 space-y-2">
-                        {testItems.map((item, index) => (
-                          <div
-                            key={item.id}
-                            className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2"
-                          >
-                            <p className="text-xs text-slate-400">
-                              {index + 1}. {item.question}
-                            </p>
-                            <p className="mt-1 text-sm text-emerald-200">
-                              {item.answer}
-                            </p>
-                          </div>
-                        ))}
+                        {testItems.map((item, index) => {
+                          const selected = testResponses[item.id] ?? ''
+                          const isCorrect =
+                            selected !== '' &&
+                            normalizeAnswer(selected) ===
+                              normalizeAnswer(item.answer)
+                          return (
+                            <div
+                              key={item.id}
+                              className={`rounded-lg border px-3 py-2 ${
+                                isCorrect
+                                  ? 'border-white/10 bg-white/[0.02]'
+                                  : 'border-rose-500/40 bg-rose-500/5'
+                              }`}
+                            >
+                              <p className="text-xs text-slate-400">
+                                {index + 1}. {item.question}
+                              </p>
+                              <p
+                                className={`mt-2 text-sm font-semibold ${
+                                  isCorrect
+                                    ? 'text-emerald-200'
+                                    : 'text-rose-300'
+                                }`}
+                              >
+                                {isCorrect ? 'Correct' : 'Incorrect'}
+                              </p>
+                              <p
+                                className={`mt-1 text-xs ${
+                                  isCorrect
+                                    ? 'text-slate-300'
+                                    : 'text-rose-200'
+                                }`}
+                              >
+                                Your answer: {selected ? selected : 'No answer'}
+                              </p>
+                              {!isCorrect && (
+                                <p className="mt-1 text-xs text-emerald-200">
+                                  Correct answer: {item.answer}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                       <div className="mt-3 flex items-center gap-2">
                         <Button
