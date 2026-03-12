@@ -1,35 +1,32 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useForm, type UseFormRegisterReturn } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
-import { useQueries } from '@tanstack/react-query'
-import { AnimatePresence, motion, Variants } from 'framer-motion'
-import {
-  ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  Flame,
-  GalleryVerticalEnd,
-  LayersIcon,
-  Rocket,
-  Timer,
-  Trophy,
-  Zap,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { UserButton } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Progress } from '@/components/ui/progress'
 import { useCreateSubject, useSubjects } from '@/hooks/use-subjects'
 import { useCreateTopic } from '@/hooks/use-topics'
 import { useUpdateUser, useUser } from '@/hooks/use-user'
 import { getTopics } from '@/lib/api/topics'
 import { getLevelFromXp } from '@/lib/progression'
+import { UserButton } from '@clerk/nextjs'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueries } from '@tanstack/react-query'
+import { AnimatePresence, motion, Variants } from 'framer-motion'
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Flame,
+  GalleryVerticalEnd,
+  LayersIcon,
+  Rocket,
+  Trophy,
+  Zap,
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm, useWatch, type UseFormRegisterReturn } from 'react-hook-form'
+import { toast } from 'sonner'
+import { z } from 'zod'
 
 const timerSchema = z
   .object({
@@ -170,11 +167,14 @@ export default function OnboardingPage() {
   const [newTopicName, setNewTopicName] = useState('')
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
   const [flowMessage, setFlowMessage] = useState('')
+  const [completionDestination, setCompletionDestination] = useState<
+    '/dashboard' | '/subjects' | null
+  >(null)
   const {
     register,
-    handleSubmit,
     reset,
-    watch,
+    getValues,
+    control,
     formState: { errors },
   } = useForm<TimerFormInput, unknown, TimerFormValues>({
     resolver: zodResolver(timerSchema),
@@ -189,9 +189,9 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!userLoading && user?.onboarded) {
-      router.replace('/dashboard')
+      router.replace(completionDestination ?? '/dashboard')
     }
-  }, [userLoading, user?.onboarded, router])
+  }, [completionDestination, userLoading, user?.onboarded, router])
 
   const resolvedSubjectId = useMemo(() => {
     if (!subjects.length) return ''
@@ -215,6 +215,26 @@ export default function OnboardingPage() {
     const hasTopic = allTopics.length > 0
     return { hasSubject, hasTopic, topicCount: allTopics.length }
   }, [subjects.length, topicQueries])
+
+  const watchedBlitz = useWatch({ control, name: 'blitzMinutes' })
+  const watchedFocus = useWatch({ control, name: 'focusMinutes' })
+  const watchedDeep = useWatch({ control, name: 'deepMinutes' })
+
+  const parseTimerPreferences = () => {
+    const values = getValues()
+    const parse = timerSchema.safeParse({
+      blitzMinutes: values.blitzMinutes,
+      focusMinutes: values.focusMinutes,
+      deepMinutes: values.deepMinutes,
+      shortBreakMinutes: user?.shortBreakMinutes ?? 5,
+      longBreakMinutes: user?.longBreakMinutes ?? 10,
+    })
+    if (!parse.success) {
+      setFlowMessage('Fix the highlighted timer fields to continue.')
+      return null
+    }
+    return parse.data
+  }
 
   useEffect(() => {
     if (!user) return
@@ -267,27 +287,18 @@ export default function OnboardingPage() {
       return
     }
     if (step === 3) {
-      const submit = handleSubmit(
-        async (values) => {
-          try {
-            await updateUser.mutateAsync({
-              blitzMinutes: values.blitzMinutes,
-              focusMinutes: values.focusMinutes,
-              deepMinutes: values.deepMinutes,
-              shortBreakMinutes: values.shortBreakMinutes,
-              longBreakMinutes: values.longBreakMinutes,
-            })
-          } catch {
-            setFlowMessage('Could not save timer preferences right now.')
-            return
-          }
-        },
-        () => {
-          setFlowMessage('Fix the highlighted timer fields to continue.')
-        }
-      )
-      await submit()
-      if (Object.keys(errors).length > 0) {
+      const parsed = parseTimerPreferences()
+      if (!parsed) return
+      try {
+        await updateUser.mutateAsync({
+          blitzMinutes: parsed.blitzMinutes,
+          focusMinutes: parsed.focusMinutes,
+          deepMinutes: parsed.deepMinutes,
+          shortBreakMinutes: user?.shortBreakMinutes ?? 5,
+          longBreakMinutes: user?.longBreakMinutes ?? 10,
+        })
+      } catch {
+        setFlowMessage('Could not save timer preferences right now.')
         return
       }
     }
@@ -300,33 +311,30 @@ export default function OnboardingPage() {
     setStep((prev) => Math.max(0, prev - 1))
   }
 
-  const onFinishOnboarding = async () => {
+  const completeOnboarding = async (
+    destination: '/dashboard' | '/subjects' = '/dashboard'
+  ) => {
+    setCompletionDestination(destination)
     if (!setup.hasSubject || !setup.hasTopic) {
       setFlowMessage('Complete setup first.')
       return
     }
-    const submit = handleSubmit(
-      async (values) => {
-        try {
-          await updateUser.mutateAsync({
-            onboarded: true,
-            blitzMinutes: values.blitzMinutes,
-            focusMinutes: values.focusMinutes,
-            deepMinutes: values.deepMinutes,
-            shortBreakMinutes: values.shortBreakMinutes,
-            longBreakMinutes: values.longBreakMinutes,
-          })
-          setFlowMessage('Setup complete. Redirecting to your dashboard...')
-          router.push('/dashboard')
-        } catch {
-          setFlowMessage('Unable to complete onboarding right now.')
-        }
-      },
-      () => {
-        setFlowMessage('Fix the highlighted timer fields to finish.')
-      }
-    )
-    await submit()
+    const parsed = parseTimerPreferences()
+    if (!parsed) return
+    try {
+      await updateUser.mutateAsync({
+        onboarded: true,
+        blitzMinutes: parsed.blitzMinutes,
+        focusMinutes: parsed.focusMinutes,
+        deepMinutes: parsed.deepMinutes,
+        shortBreakMinutes: user?.shortBreakMinutes ?? 5,
+        longBreakMinutes: user?.longBreakMinutes ?? 10,
+      })
+      setFlowMessage('Setup complete. Redirecting to your dashboard...')
+      router.push(destination)
+    } catch {
+      setFlowMessage('Unable to complete onboarding right now.')
+    }
   }
 
   if (userLoading) {
@@ -343,153 +351,74 @@ export default function OnboardingPage() {
     )
   }
 
-  const firstName = user?.firstName ?? 'there'
-  const progress = ((step + 1) / STEPS.length) * 100
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#070b16] text-slate-100">
       {/* Background decorations */}
       <div className="pointer-events-none absolute inset-0">
-        <motion.div
-          className="absolute top-[-140px] right-[-140px] h-[500px] w-[500px] rounded-full bg-violet-600/18 blur-[160px]"
-          animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.75, 0.5] }}
-          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute bottom-[-160px] left-[-140px] h-[480px] w-[480px] rounded-full bg-cyan-500/14 blur-[160px]"
-          animate={{ scale: [1.05, 1, 1.05], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-900/10 blur-[200px]"
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 6, repeat: Infinity }}
-        />
-        {/* Grid overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_55%)]" />
+        <div className="absolute -top-32 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-violet-600/16 blur-[160px]" />
+        <div className="absolute right-[-120px] -bottom-32 h-[440px] w-[440px] rounded-full bg-cyan-500/12 blur-[160px]" />
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-10">
+        <header className="flex items-center justify-between">
+          <div className="leading-none text-white">
+            <span className="block text-lg font-black tracking-tight sm:text-xl">
+              Tempo
+            </span>
+            <span className="mt-0.5 block text-[10px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+              onboarding
+            </span>
+          </div>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: 'w-9 h-9 border border-violet-400/40',
+              },
+            }}
+          />
+        </header>
 
-        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-start pt-12 sm:pt-20">
-          <div className="w-full space-y-6">
-            {/* Step pill strip */}
-            <div className="flex items-center justify-between gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-2">
-              {STEPS.map((s, index) => {
-                const active = index === step
-                const done = index < step
-                return (
-                  <motion.div
-                    key={s.id}
-                    className={`relative flex flex-1 items-center justify-center rounded-xl py-1.5 text-xs font-semibold transition-colors ${
-                      active
-                        ? 'bg-violet-600/80 text-white shadow-[0_0_20px_rgba(124,58,237,0.5)]'
-                        : done
-                          ? 'bg-cyan-500/20 text-cyan-300'
-                          : 'text-slate-600'
-                    }`}
-                    animate={active ? { scale: [0.97, 1] } : { scale: 1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {done && (
-                      <CheckCircle2 className="mr-1 h-3 w-3 text-cyan-400" />
-                    )}
-                    <span className="hidden sm:inline">{s.label}</span>
-                    <span className="sm:hidden">{index + 1}</span>
-                  </motion.div>
-                )
-              })}
-            </div>
-
-            {/* Progress bar */}
-            <motion.div
-              initial={false}
-              animate={{ width: `${progress}%` }}
-              transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-              className="h-0.5 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400"
-              style={{ width: `${progress}%` }}
-            />
-
-            {/* Error message */}
+        <main className="flex flex-1 flex-col items-center justify-center py-10 sm:py-12">
+          <div className="w-full max-w-4xl space-y-8 text-center">
             <AnimatePresence>
               {!!flowMessage && (
                 <motion.div
-                  initial={{ opacity: 0, y: -6, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: 'auto' }}
-                  exit={{ opacity: 0, y: -6, height: 0 }}
-                  className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="mx-auto max-w-2xl rounded-full border border-amber-500/25 bg-amber-500/10 px-5 py-2 text-sm text-amber-200"
                 >
                   {flowMessage}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Step content */}
             <AnimatePresence mode="wait">
               <motion.section
                 key={`onboarding-step-${step}`}
-                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -16, scale: 0.98 }}
                 transition={{ duration: 0.25, ease: 'easeOut' }}
-                className="space-y-6"
+                className="space-y-8"
               >
                 {/* ── STEP 0: Welcome ── */}
                 {step === 0 && (
-                  <div className="space-y-6 text-center">
-                    <div className="space-y-3">
-                      <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{
-                          type: 'spring',
-                          stiffness: 200,
-                          damping: 14,
-                          delay: 0.1,
-                        }}
-                        className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-600/40 to-purple-800/40 text-5xl shadow-[0_0_40px_rgba(124,58,237,0.25)]"
-                      >
-                        👋
-                      </motion.div>
-                      <div>
-                        <motion.h2
-                          className="text-4xl font-black tracking-tight text-white sm:text-5xl"
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 }}
-                        >
-                          Hey, {firstName}!
-                        </motion.h2>
-                        <motion.p
-                          className="mt-2 text-sm text-slate-400 sm:text-base"
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 }}
-                        >
-                          Welcome to{' '}
-                          <span className="font-semibold text-violet-300">
-                            Tempo
-                          </span>{' '}
-                          — your focus companion. Quick setup, then you&apos;re
-                          locked in. 🚀
-                        </motion.p>
-                      </div>
+                  <div className="space-y-6">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-600/20 text-3xl">
+                      🚀
                     </div>
-
-                    <motion.div
-                      className="grid gap-3 sm:grid-cols-3"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
+                    <div className="space-y-3">
+                      <h2 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+                        Welcome to Tempo
+                      </h2>
+                      <p className="mx-auto max-w-2xl text-sm text-slate-400 sm:text-base">
+                        Let&apos;s personalize your focus flow. We will set up
+                        subjects, topics, and your timer style in a minute.
+                      </p>
+                    </div>
+                    <div className="mx-auto grid max-w-3xl gap-3 sm:grid-cols-3">
                       <QuickStat
                         label="Level"
                         value={`Lvl ${getLevelFromXp(user?.totalXP ?? 0)}`}
@@ -508,39 +437,27 @@ export default function OnboardingPage() {
                         icon="✨"
                         color="cyan"
                       />
-                    </motion.div>
-
-                    <motion.div
-                      className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-xs font-semibold text-violet-300"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      +50 XP setup bonus waiting for you
-                    </motion.div>
+                    </div>
                   </div>
                 )}
 
                 {/* ── STEP 1: Create Subject ── */}
                 {step === 1 && (
-                  <div className="space-y-5">
-                    <div className="space-y-2 text-center">
-                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-600/20 text-3xl">
-                        📚
-                      </div>
-                      <h2 className="text-3xl font-black tracking-tight text-white">
+                  <div className="space-y-6">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-600/20 text-2xl">
+                      📚
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
                         Create your first subject
                       </h2>
-                      <p className="text-sm text-slate-400">
-                        Subjects are broad buckets — like{' '}
-                        <span className="text-slate-300">Math</span>,{' '}
-                        <span className="text-slate-300">Biology</span>, or{' '}
-                        <span className="text-slate-300">System Design</span>.
+                      <p className="mx-auto max-w-2xl text-sm text-slate-400">
+                        Subjects are your big buckets. Think Math, Biology, or
+                        System Design.
                       </p>
                     </div>
-
-                    <div className="mx-auto w-full max-w-md space-y-3">
-                      <div className="flex items-center gap-2">
+                    <div className="mx-auto w-full max-w-xl space-y-3">
+                      <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5">
                         <Input
                           id="subject-name"
                           value={newSubjectName}
@@ -549,27 +466,23 @@ export default function OnboardingPage() {
                             e.key === 'Enter' && void onCreateSubject()
                           }
                           placeholder="e.g. Mathematics"
-                          className="h-12 border-white/15 bg-white/5 text-white placeholder:text-slate-600 focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20"
+                          className="h-12 border-white/10 bg-white/5 text-white placeholder:text-slate-600 focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20"
                         />
-                        <motion.div whileTap={{ scale: 0.95 }}>
+                        <motion.div whileTap={{ scale: 0.96 }}>
                           <Button
                             onClick={() => void onCreateSubject()}
                             disabled={
                               !newSubjectName.trim() || createSubject.isPending
                             }
-                            className="h-12 bg-violet-600 px-5 font-semibold text-white hover:bg-violet-500"
+                            className="h-12 rounded-xl bg-violet-600 px-5 font-semibold text-white hover:bg-violet-500"
                           >
-                            Add
+                            Add subject
                           </Button>
                         </motion.div>
                       </div>
 
                       {setup.hasSubject && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="flex flex-wrap gap-2"
-                        >
+                        <div className="flex flex-wrap justify-center gap-2">
                           {subjects.map((s) => (
                             <span
                               key={s.id}
@@ -579,7 +492,7 @@ export default function OnboardingPage() {
                               {s.name}
                             </span>
                           ))}
-                        </motion.div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -587,29 +500,29 @@ export default function OnboardingPage() {
 
                 {/* ── STEP 2: Add Topic ── */}
                 {step === 2 && (
-                  <div className="space-y-5">
-                    <div className="space-y-2 text-center">
-                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-600/20 text-3xl">
-                        🎯
-                      </div>
-                      <h2 className="text-3xl font-black tracking-tight text-white">
+                  <div className="space-y-6">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-600/20 text-2xl">
+                      🎯
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
                         Add your first topic
                       </h2>
-                      <p className="text-sm text-slate-400">
-                        Keep topics small and concrete so every session feels
-                        like a clear win.
+                      <p className="mx-auto max-w-2xl text-sm text-slate-400">
+                        Keep topics small and concrete so each session feels
+                        like a win.
                       </p>
                     </div>
 
-                    <div className="mx-auto max-w-md space-y-3">
-                      <div className="space-y-1.5">
+                    <div className="mx-auto w-full max-w-xl space-y-3">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                         <label className="block text-xs tracking-widest text-slate-500 uppercase">
                           Subject
                         </label>
                         <select
                           value={resolvedSubjectId}
                           onChange={(e) => setSelectedSubjectId(e.target.value)}
-                          className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white transition-all outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20"
+                          className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white transition-all outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20"
                           disabled={!subjects.length}
                         >
                           {!subjects.length ? (
@@ -628,7 +541,7 @@ export default function OnboardingPage() {
                         </select>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5">
                         <Input
                           id="topic-name"
                           value={newTopicName}
@@ -637,9 +550,9 @@ export default function OnboardingPage() {
                             e.key === 'Enter' && void onCreateTopic()
                           }
                           placeholder="e.g. Derivatives basics"
-                          className="h-12 border-white/15 bg-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/20"
+                          className="h-12 border-white/10 bg-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/20"
                         />
-                        <motion.div whileTap={{ scale: 0.95 }}>
+                        <motion.div whileTap={{ scale: 0.96 }}>
                           <Button
                             onClick={() => void onCreateTopic()}
                             disabled={
@@ -647,9 +560,9 @@ export default function OnboardingPage() {
                               !resolvedSubjectId ||
                               createTopic.isPending
                             }
-                            className="h-12 bg-cyan-600 px-5 font-semibold text-white hover:bg-cyan-500"
+                            className="h-12 rounded-xl bg-cyan-600 px-5 font-semibold text-white hover:bg-cyan-500"
                           >
-                            Add
+                            Add topic
                           </Button>
                         </motion.div>
                       </div>
@@ -659,35 +572,29 @@ export default function OnboardingPage() {
 
                 {/* ── STEP 3: Timer Setup ── */}
                 {step === 3 && (
-                  <div className="space-y-5">
-                    <div className="space-y-2 text-center">
-                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-600/20 text-3xl">
-                        ⏱️
-                      </div>
-                      <h2 className="text-3xl font-black tracking-tight text-white">
+                  <div className="space-y-6">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-600/20 text-2xl">
+                      ⏱️
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
                         Set your timer style
                       </h2>
-                      <p className="text-sm text-slate-400">
-                        Match your session lengths to how you actually work.
-                        Tweakable anytime in Settings.
+                      <p className="mx-auto max-w-2xl text-sm text-slate-400">
+                        Match your session lengths to how you actually work. You
+                        can tweak these later in Settings.
                       </p>
                     </div>
 
-                    {/* Mode legend */}
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       {TIMER_MODES.map((mode) => (
-                        <div
+                        <span
                           key={mode.key}
-                          className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5 text-center"
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-200"
                         >
-                          <div className="mb-0.5 text-xl">{mode.emoji}</div>
-                          <div className="text-xs font-bold text-white">
-                            {mode.label}
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            {mode.desc}
-                          </div>
-                        </div>
+                          <span className="text-base">{mode.emoji}</span>
+                          {mode.label} · {mode.desc}
+                        </span>
                       ))}
                     </div>
 
@@ -711,42 +618,27 @@ export default function OnboardingPage() {
                         error={errors.deepMinutes?.message}
                       />
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <TimerField
-                        label="Short break"
-                        hint="1–30 min"
-                        registration={register('shortBreakMinutes')}
-                        error={errors.shortBreakMinutes?.message}
-                      />
-                      <TimerField
-                        label="Long break"
-                        hint="5–60 min"
-                        registration={register('longBreakMinutes')}
-                        error={errors.longBreakMinutes?.message}
-                      />
-                    </div>
-                    <p className="text-center text-xs text-slate-600">
-                      Preview: Blitz {String(watch('blitzMinutes') || '-')}m ·
-                      Focus {String(watch('focusMinutes') || '-')}m · Deep{' '}
-                      {String(watch('deepMinutes') || '-')}m · Short break{' '}
-                      {String(watch('shortBreakMinutes') || '-')}m · Long break{' '}
-                      {String(watch('longBreakMinutes') || '-')}m
+                    <p className="text-center text-[11px] text-slate-500">
+                      Preview: Blitz {String(watchedBlitz || '-')}m · Focus{' '}
+                      {String(watchedFocus || '-')}m · Deep{' '}
+                      {String(watchedDeep || '-')}m
                     </p>
                   </div>
                 )}
 
                 {/* ── STEP 4: Features Overview ── */}
                 {step === 4 && (
-                  <div className="space-y-5">
-                    <div className="space-y-2 text-center">
-                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-600/20 text-3xl">
-                        🌟
-                      </div>
-                      <h2 className="text-3xl font-black tracking-tight text-white">
-                        Everything in Tempo
+                  <div className="space-y-6">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-600/20 text-2xl">
+                      🌟
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                        Here is what you can do
                       </h2>
-                      <p className="text-sm text-slate-400">
-                        Six features to help you study smarter, not just longer.
+                      <p className="mx-auto max-w-2xl text-sm text-slate-400">
+                        Tools that keep you consistent and make study feel
+                        lighter.
                       </p>
                     </div>
 
@@ -759,7 +651,7 @@ export default function OnboardingPage() {
                           initial="hidden"
                           animate="visible"
                           whileHover={{ scale: 1.02, y: -2 }}
-                          className={`relative rounded-xl border bg-gradient-to-br p-4 ${feature.color} cursor-default transition-shadow hover:shadow-[0_0_24px_rgba(0,0,0,0.3)]`}
+                          className={`relative rounded-2xl border bg-gradient-to-br p-4 ${feature.color} cursor-default transition-shadow hover:shadow-[0_0_24px_rgba(0,0,0,0.3)]`}
                         >
                           {feature.badge && (
                             <span className="absolute top-2.5 right-2.5 rounded-full border border-violet-400/40 bg-violet-500/30 px-2 py-0.5 text-[10px] font-bold text-violet-300">
@@ -783,122 +675,99 @@ export default function OnboardingPage() {
 
                 {/* ── STEP 5: Done ── */}
                 {step === 5 && (
-                  <div className="space-y-5 text-center">
-                    <motion.div
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 200,
-                        damping: 14,
-                      }}
-                      className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-600/40 to-teal-800/40 text-5xl shadow-[0_0_40px_rgba(16,185,129,0.2)]"
-                    >
-                      🎉
-                    </motion.div>
-
+                  <div className="space-y-6">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-600/20 text-3xl">
+                      ✅
+                    </div>
                     <div className="space-y-2">
                       <h2 className="text-4xl font-black tracking-tight text-white">
-                        You&apos;re all set
+                        You are ready
                       </h2>
-                      <p className="text-sm text-slate-400">
-                        Complete setup and dive into your dashboard. Your
-                        Flashcard Decks will be waiting inside each subject
-                        whenever you&apos;re ready.
+                      <p className="mx-auto max-w-2xl text-sm text-slate-400">
+                        Pick how you want to start. You can always switch later.
                       </p>
                     </div>
+                    <div className="mx-auto grid w-full max-w-4xl gap-4 md:grid-cols-2">
+                      <div className="rounded-2xl border border-violet-500/25 bg-violet-500/10 p-6 text-left">
+                        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-600/20 text-xl">
+                          ⏱️
+                        </div>
+                        <h3 className="text-lg font-bold text-white">
+                          Run a Pomodoro
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-400">
+                          Jump into the dashboard and start a focused session.
+                        </p>
+                        <Button
+                          onClick={() => void completeOnboarding('/dashboard')}
+                          disabled={
+                            !setup.hasSubject ||
+                            !setup.hasTopic ||
+                            updateUser.isPending
+                          }
+                          className="mt-4 w-full rounded-full bg-violet-600 text-white hover:bg-violet-500"
+                        >
+                          Start a session
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
 
-                    <div className="grid gap-2.5 sm:grid-cols-3">
-                      <QuickStat
-                        label="Subjects"
-                        value={String(subjects.length)}
-                        icon="📚"
-                        color="violet"
-                      />
-                      <QuickStat
-                        label="Topics"
-                        value={String(setup.topicCount)}
-                        icon="🎯"
-                        color="cyan"
-                      />
-                      <QuickStat
-                        label="Status"
-                        value={
-                          setup.hasSubject && setup.hasTopic
-                            ? 'Ready ✓'
-                            : 'Incomplete'
-                        }
-                        icon={setup.hasSubject && setup.hasTopic ? '✅' : '⚠️'}
-                        color="emerald"
-                      />
+                      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-6 text-left">
+                        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-600/20 text-xl">
+                          🧠
+                        </div>
+                        <h3 className="text-lg font-bold text-white">
+                          Study or Quiz
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-400">
+                          Open a subject to review flashcards or take a quick
+                          quiz.
+                        </p>
+                        <Button
+                          onClick={() => void completeOnboarding('/subjects')}
+                          disabled={
+                            !setup.hasSubject ||
+                            !setup.hasTopic ||
+                            updateUser.isPending
+                          }
+                          className="mt-4 w-full rounded-full border border-violet-400/40 bg-violet-500/15 text-violet-100 hover:bg-violet-500/25"
+                        >
+                          Open flashcards
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-
-                    {/* Flashcard teaser */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex items-center gap-3 rounded-xl border border-violet-500/20 bg-violet-500/[0.07] px-4 py-3 text-left"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-500/30 bg-violet-600/20">
-                        <BookOpen className="h-4 w-4 text-violet-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white">
-                          Flashcard Decks are ready
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Head to any subject and create your first deck to
-                          start reviewing.
-                        </p>
-                      </div>
-                    </motion.div>
-
-                    <motion.div whileTap={{ scale: 0.98 }}>
-                      <Button
-                        onClick={() => void onFinishOnboarding()}
-                        disabled={
-                          !setup.hasSubject ||
-                          !setup.hasTopic ||
-                          updateUser.isPending
-                        }
-                        className="h-13 w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-base font-bold text-white shadow-[0_0_30px_rgba(16,185,129,0.25)] transition-all hover:from-emerald-500 hover:to-teal-500"
-                      >
-                        <CheckCircle2 className="h-5 w-5" />
-                        Enter dashboard
-                        <ArrowRight className="h-5 w-5" />
-                      </Button>
-                    </motion.div>
                   </div>
                 )}
               </motion.section>
             </AnimatePresence>
 
-            {/* Navigation */}
-            <div className="flex items-center justify-between pt-2">
-              <motion.div whileTap={{ scale: 0.95 }}>
-                <Button
-                  variant="outline"
-                  className="border-white/12 bg-white/[0.04] text-slate-300 hover:bg-white/10 hover:text-white"
-                  onClick={onBack}
-                  disabled={step === 0}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-              </motion.div>
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                variant="outline"
+                className="h-11 rounded-full border-white/15 bg-white/[0.04] px-6 text-slate-300 hover:bg-white/10 hover:text-white"
+                onClick={onBack}
+                disabled={step === 0}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
 
               {step < STEPS.length - 1 && (
-                <motion.div whileTap={{ scale: 0.95 }}>
-                  <Button
-                    className="bg-violet-600 font-semibold text-white hover:bg-violet-500"
-                    onClick={() => void onNext()}
-                    disabled={updateUser.isPending && step === 3}
-                  >
-                    {step === 3 ? 'Save & continue' : 'Continue'}
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </motion.div>
+                <Button
+                  className="h-11 rounded-full bg-violet-600 px-8 text-sm font-semibold text-white shadow-[0_0_20px_rgba(124,58,237,0.35)] hover:bg-violet-500"
+                  onClick={() => void onNext()}
+                  disabled={updateUser.isPending && step === 3}
+                >
+                  {step === 0
+                    ? 'Begin setup'
+                    : step === 3
+                      ? 'Save & continue'
+                      : step === 4
+                        ? 'I am ready'
+                        : 'Continue'}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               )}
             </div>
 
@@ -907,6 +776,23 @@ export default function OnboardingPage() {
             </p>
           </div>
         </main>
+
+        <div className="pb-6">
+          <div className="mx-auto flex items-center justify-center gap-2">
+            {STEPS.map((_, index) => (
+              <div
+                key={`step-dot-${index}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  index === step
+                    ? 'w-8 bg-violet-400'
+                    : index < step
+                      ? 'w-3 bg-violet-400/60'
+                      : 'w-3 bg-white/10'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -954,8 +840,8 @@ function TimerField({
   error?: string
 }) {
   return (
-    <div className="space-y-1.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-3">
-      <label className="text-xs tracking-widest text-slate-500 uppercase">
+    <div className="space-y-1.5 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+      <label className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
         {label}
       </label>
       <Input
@@ -963,9 +849,13 @@ function TimerField({
         inputMode="numeric"
         placeholder={hint}
         {...registration}
-        className="h-10 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
+        className="h-9 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/15"
       />
-      <p className={error ? 'text-[11px] text-rose-300' : 'text-[11px] text-slate-600'}>
+      <p
+        className={
+          error ? 'text-[11px] text-rose-300' : 'text-[11px] text-slate-600'
+        }
+      >
         {error ?? hint}
       </p>
     </div>
