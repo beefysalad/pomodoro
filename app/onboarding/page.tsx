@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useForm, type UseFormRegisterReturn } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { useQueries } from '@tanstack/react-query'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
@@ -27,6 +30,42 @@ import { useCreateTopic } from '@/hooks/use-topics'
 import { useUpdateUser, useUser } from '@/hooks/use-user'
 import { getTopics } from '@/lib/api/topics'
 import { getLevelFromXp } from '@/lib/progression'
+
+const timerSchema = z
+  .object({
+    blitzMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(5).max(120)
+    ),
+    focusMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(10).max(180)
+    ),
+    deepMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(15).max(240)
+    ),
+    shortBreakMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(1).max(30)
+    ),
+    longBreakMinutes: z.preprocess(
+      (val) => (val === '' ? undefined : Number(val)),
+      z.number().int().min(5).max(60)
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (data.longBreakMinutes < data.shortBreakMinutes) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Long break should be greater than or equal to short break.',
+        path: ['longBreakMinutes'],
+      })
+    }
+  })
+
+type TimerFormInput = z.input<typeof timerSchema>
+type TimerFormValues = z.output<typeof timerSchema>
 
 const STEPS = [
   { id: 'welcome', label: 'Welcome' },
@@ -131,12 +170,22 @@ export default function OnboardingPage() {
   const [newTopicName, setNewTopicName] = useState('')
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
   const [flowMessage, setFlowMessage] = useState('')
-
-  const [blitzMinutes, setBlitzMinutes] = useState('')
-  const [focusMinutes, setFocusMinutes] = useState('')
-  const [deepMinutes, setDeepMinutes] = useState('')
-  const [shortBreakMinutes, setShortBreakMinutes] = useState('')
-  const [longBreakMinutes, setLongBreakMinutes] = useState('')
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<TimerFormInput, unknown, TimerFormValues>({
+    resolver: zodResolver(timerSchema),
+    defaultValues: {
+      blitzMinutes: user?.blitzMinutes ?? 10,
+      focusMinutes: user?.focusMinutes ?? 25,
+      deepMinutes: user?.deepMinutes ?? 50,
+      shortBreakMinutes: user?.shortBreakMinutes ?? 5,
+      longBreakMinutes: user?.longBreakMinutes ?? 10,
+    },
+  })
 
   useEffect(() => {
     if (!userLoading && user?.onboarded) {
@@ -167,13 +216,16 @@ export default function OnboardingPage() {
     return { hasSubject, hasTopic, topicCount: allTopics.length }
   }, [subjects.length, topicQueries])
 
-  const effectiveBlitz = blitzMinutes || String(user?.blitzMinutes ?? 10)
-  const effectiveFocus = focusMinutes || String(user?.focusMinutes ?? 25)
-  const effectiveDeep = deepMinutes || String(user?.deepMinutes ?? 50)
-  const effectiveShortBreak =
-    shortBreakMinutes || String(user?.shortBreakMinutes ?? 5)
-  const effectiveLongBreak =
-    longBreakMinutes || String(user?.longBreakMinutes ?? 10)
+  useEffect(() => {
+    if (!user) return
+    reset({
+      blitzMinutes: user.blitzMinutes ?? 10,
+      focusMinutes: user.focusMinutes ?? 25,
+      deepMinutes: user.deepMinutes ?? 50,
+      shortBreakMinutes: user.shortBreakMinutes ?? 5,
+      longBreakMinutes: user.longBreakMinutes ?? 10,
+    })
+  }, [reset, user])
 
   const onCreateSubject = async () => {
     const name = newSubjectName.trim()
@@ -205,40 +257,6 @@ export default function OnboardingPage() {
     }
   }
 
-  const parseTimerPreferences = () => {
-    const blitz = Number(effectiveBlitz)
-    const focus = Number(effectiveFocus)
-    const deep = Number(effectiveDeep)
-    const shortBreak = Number(effectiveShortBreak)
-    const longBreak = Number(effectiveLongBreak)
-
-    if (!Number.isFinite(blitz) || blitz < 5 || blitz > 120) {
-      setFlowMessage('Blitz must be between 5 and 120 minutes.')
-      return null
-    }
-    if (!Number.isFinite(focus) || focus < 10 || focus > 180) {
-      setFlowMessage('Focus must be between 10 and 180 minutes.')
-      return null
-    }
-    if (!Number.isFinite(deep) || deep < 15 || deep > 240) {
-      setFlowMessage('Deep must be between 15 and 240 minutes.')
-      return null
-    }
-    if (!Number.isFinite(shortBreak) || shortBreak < 1 || shortBreak > 30) {
-      setFlowMessage('Short break must be between 1 and 30 minutes.')
-      return null
-    }
-    if (!Number.isFinite(longBreak) || longBreak < 5 || longBreak > 60) {
-      setFlowMessage('Long break must be between 5 and 60 minutes.')
-      return null
-    }
-    if (longBreak < shortBreak) {
-      setFlowMessage('Long break should be ≥ short break.')
-      return null
-    }
-    return { blitz, focus, deep, shortBreak, longBreak }
-  }
-
   const onNext = async () => {
     if (step === 1 && !setup.hasSubject) {
       setFlowMessage('Create your first subject to continue.')
@@ -249,18 +267,27 @@ export default function OnboardingPage() {
       return
     }
     if (step === 3) {
-      const parsed = parseTimerPreferences()
-      if (!parsed) return
-      try {
-        await updateUser.mutateAsync({
-          blitzMinutes: parsed.blitz,
-          focusMinutes: parsed.focus,
-          deepMinutes: parsed.deep,
-          shortBreakMinutes: parsed.shortBreak,
-          longBreakMinutes: parsed.longBreak,
-        })
-      } catch {
-        setFlowMessage('Could not save timer preferences right now.')
+      const submit = handleSubmit(
+        async (values) => {
+          try {
+            await updateUser.mutateAsync({
+              blitzMinutes: values.blitzMinutes,
+              focusMinutes: values.focusMinutes,
+              deepMinutes: values.deepMinutes,
+              shortBreakMinutes: values.shortBreakMinutes,
+              longBreakMinutes: values.longBreakMinutes,
+            })
+          } catch {
+            setFlowMessage('Could not save timer preferences right now.')
+            return
+          }
+        },
+        () => {
+          setFlowMessage('Fix the highlighted timer fields to continue.')
+        }
+      )
+      await submit()
+      if (Object.keys(errors).length > 0) {
         return
       }
     }
@@ -278,22 +305,28 @@ export default function OnboardingPage() {
       setFlowMessage('Complete setup first.')
       return
     }
-    const parsed = parseTimerPreferences()
-    if (!parsed) return
-    try {
-      await updateUser.mutateAsync({
-        onboarded: true,
-        blitzMinutes: parsed.blitz,
-        focusMinutes: parsed.focus,
-        deepMinutes: parsed.deep,
-        shortBreakMinutes: parsed.shortBreak,
-        longBreakMinutes: parsed.longBreak,
-      })
-      setFlowMessage('Setup complete. Redirecting to your dashboard...')
-      router.push('/dashboard')
-    } catch {
-      setFlowMessage('Unable to complete onboarding right now.')
-    }
+    const submit = handleSubmit(
+      async (values) => {
+        try {
+          await updateUser.mutateAsync({
+            onboarded: true,
+            blitzMinutes: values.blitzMinutes,
+            focusMinutes: values.focusMinutes,
+            deepMinutes: values.deepMinutes,
+            shortBreakMinutes: values.shortBreakMinutes,
+            longBreakMinutes: values.longBreakMinutes,
+          })
+          setFlowMessage('Setup complete. Redirecting to your dashboard...')
+          router.push('/dashboard')
+        } catch {
+          setFlowMessage('Unable to complete onboarding right now.')
+        }
+      },
+      () => {
+        setFlowMessage('Fix the highlighted timer fields to finish.')
+      }
+    )
+    await submit()
   }
 
   if (userLoading) {
@@ -662,36 +695,43 @@ export default function OnboardingPage() {
                       <TimerField
                         label="Blitz"
                         hint="5–120 min"
-                        value={effectiveBlitz}
-                        onChange={setBlitzMinutes}
+                        registration={register('blitzMinutes')}
+                        error={errors.blitzMinutes?.message}
                       />
                       <TimerField
                         label="Focus"
                         hint="10–180 min"
-                        value={effectiveFocus}
-                        onChange={setFocusMinutes}
+                        registration={register('focusMinutes')}
+                        error={errors.focusMinutes?.message}
                       />
                       <TimerField
                         label="Deep"
                         hint="15–240 min"
-                        value={effectiveDeep}
-                        onChange={setDeepMinutes}
+                        registration={register('deepMinutes')}
+                        error={errors.deepMinutes?.message}
                       />
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <TimerField
                         label="Short break"
                         hint="1–30 min"
-                        value={effectiveShortBreak}
-                        onChange={setShortBreakMinutes}
+                        registration={register('shortBreakMinutes')}
+                        error={errors.shortBreakMinutes?.message}
                       />
                       <TimerField
                         label="Long break"
                         hint="5–60 min"
-                        value={effectiveLongBreak}
-                        onChange={setLongBreakMinutes}
+                        registration={register('longBreakMinutes')}
+                        error={errors.longBreakMinutes?.message}
                       />
                     </div>
+                    <p className="text-center text-xs text-slate-600">
+                      Preview: Blitz {String(watch('blitzMinutes') || '-')}m ·
+                      Focus {String(watch('focusMinutes') || '-')}m · Deep{' '}
+                      {String(watch('deepMinutes') || '-')}m · Short break{' '}
+                      {String(watch('shortBreakMinutes') || '-')}m · Long break{' '}
+                      {String(watch('longBreakMinutes') || '-')}m
+                    </p>
                   </div>
                 )}
 
@@ -905,13 +945,13 @@ function QuickStat({
 function TimerField({
   label,
   hint,
-  value,
-  onChange,
+  registration,
+  error,
 }: {
   label: string
   hint: string
-  value: string
-  onChange: (value: string) => void
+  registration: UseFormRegisterReturn
+  error?: string
 }) {
   return (
     <div className="space-y-1.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-3">
@@ -920,12 +960,14 @@ function TimerField({
       </label>
       <Input
         type="number"
-        min={1}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        inputMode="numeric"
+        placeholder={hint}
+        {...registration}
         className="h-10 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15"
       />
-      <p className="text-[11px] text-slate-600">{hint}</p>
+      <p className={error ? 'text-[11px] text-rose-300' : 'text-[11px] text-slate-600'}>
+        {error ?? hint}
+      </p>
     </div>
   )
 }
