@@ -63,6 +63,10 @@ export const POST = withAuth(
           FOR UPDATE
         `
 
+        if (!lockedUser) {
+          throw new Error('User not found')
+        }
+
         const timezone = resolveTimezone(
           req.headers.get('x-timezone'),
           lockedUser.timezone || 'UTC'
