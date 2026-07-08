@@ -2,6 +2,7 @@ import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
 
 const CreateDeckSchema = z.object({
   name: z.string().min(1),
@@ -79,5 +80,6 @@ export const POST = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )

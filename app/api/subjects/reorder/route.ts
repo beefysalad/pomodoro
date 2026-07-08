@@ -2,6 +2,7 @@ import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
 
 const ReorderSchemaApi = z.object({
   updates: z.array(
@@ -40,5 +41,6 @@ export const PATCH = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )

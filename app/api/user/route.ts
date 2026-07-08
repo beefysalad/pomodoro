@@ -2,6 +2,7 @@ import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { UpdateUserSchemaApi } from '@/lib/schemas/user'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
 
 export const GET = withAuth(async (req: NextRequest, { user }: AuthContext) => {
   return NextResponse.json({ user })
@@ -49,5 +50,6 @@ export const PATCH = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )

@@ -2,14 +2,20 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from './prisma'
 import { User } from '@/app/generated/prisma/client'
+import { checkRateLimit, type RateLimitConfig } from './rate-limit'
 
 export interface AuthContext {
   user: User
   params: Record<string, string>
 }
 
+export interface WithAuthOptions {
+  rateLimit?: RateLimitConfig
+}
+
 export function withAuth(
-  handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>
+  handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>,
+  options?: WithAuthOptions
 ) {
   return async (
     req: NextRequest,
@@ -54,6 +60,24 @@ export function withAuth(
             lastName: clerkProfile?.lastName ?? null,
           },
         })
+      }
+
+      if (options?.rateLimit) {
+        const routeKey = `${req.method}:${req.nextUrl.pathname}`
+        const result = await checkRateLimit(
+          `${resolvedUser.id}:${routeKey}`,
+          options.rateLimit
+        )
+
+        if (!result.allowed) {
+          return NextResponse.json(
+            { error: 'Too many requests. Please slow down.' },
+            {
+              status: 429,
+              headers: { 'Retry-After': String(result.retryAfterSeconds) },
+            }
+          )
+        }
       }
 
       const resolvedParams =

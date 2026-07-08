@@ -130,3 +130,13 @@ model Flashcard {
 
   @@index([deckId, status])
 }
+
+// Fixed-window counter used by lib/rate-limit.ts. One row per (identifier, window).
+// Backed by Postgres so limits are enforced correctly across serverless instances.
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

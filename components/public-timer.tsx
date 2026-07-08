@@ -406,6 +406,7 @@ export function PublicTimer({
               onClick={handleReset}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
+              aria-label="Reset"
               className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/8 backdrop-blur-sm transition-colors hover:bg-white/12"
             >
               <RotateCcw className="h-5 w-5 text-slate-200" />

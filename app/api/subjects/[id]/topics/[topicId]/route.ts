@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
 import { TOPIC_STATUSES } from '@/lib/topic-status'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
 
 const UpdateTopicSchema = z.object({
   name: z.string().min(1).optional(),
@@ -70,7 +71,8 @@ export const PATCH = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )
 
 export const DELETE = withAuth(
@@ -99,5 +101,6 @@ export const DELETE = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )

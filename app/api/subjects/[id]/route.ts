@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma'
 import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
 export const DELETE = withAuth(
   async (req: NextRequest, { user, params }: AuthContext) => {
     try {
@@ -27,5 +28,6 @@ export const DELETE = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )
