@@ -102,12 +102,15 @@ export default function OnboardingPage() {
 
   const watchedBlitz = useWatch({ control, name: 'blitzMinutes' }) as
     | number
+    | string
     | undefined
   const watchedFocus = useWatch({ control, name: 'focusMinutes' }) as
     | number
+    | string
     | undefined
   const watchedDeep = useWatch({ control, name: 'deepMinutes' }) as
     | number
+    | string
     | undefined
 
   const parseTimerPreferences = () => {
