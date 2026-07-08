@@ -54,6 +54,13 @@ export default function OnboardingPage() {
     }
   }, [])
 
+  const clearFeedbackTimeout = () => {
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current)
+      feedbackTimeoutRef.current = null
+    }
+  }
+
   const {
     register,
     reset,
@@ -141,6 +148,7 @@ export default function OnboardingPage() {
   }, [reset, user])
 
   const onCreateSubject = async () => {
+    clearFeedbackTimeout()
     const name = newSubjectName.trim()
     if (!name) return
     try {
@@ -159,6 +167,7 @@ export default function OnboardingPage() {
   }
 
   const onCreateTopic = async () => {
+    clearFeedbackTimeout()
     const name = newTopicName.trim()
     if (!name || !resolvedSubjectId) return
     try {
@@ -179,6 +188,7 @@ export default function OnboardingPage() {
   }
 
   const onNext = async () => {
+    clearFeedbackTimeout()
     if (step === 1 && !setup.hasSubject) {
       setFlowMessage('Create your first subject to continue.')
       return
@@ -208,6 +218,7 @@ export default function OnboardingPage() {
   }
 
   const onBack = () => {
+    clearFeedbackTimeout()
     setFlowMessage('')
     setStep((prev) => Math.max(0, prev - 1))
   }
