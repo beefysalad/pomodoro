@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { CreateSubjectSchemaApi, SUBJECT_COLORS } from '@/lib/schemas/subject'
 import { generateUniqueSlug } from '@/lib/helper'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
 
 export const GET = withAuth(async (req: NextRequest, { user }: AuthContext) => {
   try {
@@ -56,5 +57,6 @@ export const POST = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )

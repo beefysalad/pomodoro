@@ -2,6 +2,7 @@ import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
 
 const UpdateFlashcardSchema = z.object({
   question: z.string().min(1).optional(),
@@ -70,7 +71,8 @@ export const PATCH = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )
 
 export const DELETE = withAuth(
@@ -96,5 +98,6 @@ export const DELETE = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )

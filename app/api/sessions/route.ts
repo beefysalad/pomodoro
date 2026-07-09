@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
 import { getLevelFromXp, getNextStreak, MODE_XP } from '@/lib/progression'
+import { SESSION_CREATE_RATE_LIMIT } from '@/lib/rate-limit'
 
 const CreateSessionSchema = z.object({
   topicId: z.string().min(1),
@@ -21,26 +22,20 @@ function resolveTimezone(candidate: string | null, fallback: string) {
   }
 }
 
+interface LockedUserRow {
+  totalXP: number
+  streak: number
+  lastStudiedAt: Date | null
+  timezone: string
+}
+
 export const POST = withAuth(
   async (req: NextRequest, { user }: AuthContext) => {
     try {
       const body = await req.json()
       const parsed = CreateSessionSchema.parse(body)
       const now = new Date()
-      const timezone = resolveTimezone(
-        req.headers.get('x-timezone'),
-        user.timezone || 'UTC'
-      )
       const xpAwarded = MODE_XP[parsed.mode]
-      const previousLevel = getLevelFromXp(user.totalXP)
-      const newTotalXP = user.totalXP + xpAwarded
-      const newLevel = getLevelFromXp(newTotalXP)
-      const nextStreak = getNextStreak({
-        currentStreak: user.streak,
-        lastStudiedAt: user.lastStudiedAt,
-        timezone,
-        now,
-      })
 
       // Verify topic belongs to user
       const topic = await prisma.topic.findUnique({
@@ -55,21 +50,49 @@ export const POST = withAuth(
         )
       }
 
-      // Create the session
-      const session = await prisma.session.create({
-        data: {
-          userId: user.id,
-          topicId: parsed.topicId,
-          mode: parsed.mode,
-          duration: parsed.duration,
-          xpEarned: xpAwarded,
-          rating: parsed.rating,
-        },
-      })
+      const result = await prisma.$transaction(async (tx) => {
+        // Lock the user row for the duration of the transaction so concurrent
+        // session submissions (multiple tabs/devices) can't both read the same
+        // starting totalXP/streak and clobber each other's write. Without this,
+        // "increment" on totalXP alone would be safe, but streak (which depends
+        // on lastStudiedAt) is a read-modify-write that needs serializing.
+        const [lockedUser] = await tx.$queryRaw<LockedUserRow[]>`
+          SELECT "totalXP", streak, "lastStudiedAt", timezone
+          FROM "User"
+          WHERE id = ${user.id}
+          FOR UPDATE
+        `
 
-      // Update topic stats in the same transaction
-      await prisma.$transaction([
-        prisma.topic.update({
+        if (!lockedUser) {
+          throw new Error('User not found')
+        }
+
+        const timezone = resolveTimezone(
+          req.headers.get('x-timezone'),
+          lockedUser.timezone || 'UTC'
+        )
+        const previousLevel = getLevelFromXp(lockedUser.totalXP)
+        const newTotalXP = lockedUser.totalXP + xpAwarded
+        const newLevel = getLevelFromXp(newTotalXP)
+        const nextStreak = getNextStreak({
+          currentStreak: lockedUser.streak,
+          lastStudiedAt: lockedUser.lastStudiedAt,
+          timezone,
+          now,
+        })
+
+        const session = await tx.session.create({
+          data: {
+            userId: user.id,
+            topicId: parsed.topicId,
+            mode: parsed.mode,
+            duration: parsed.duration,
+            xpEarned: xpAwarded,
+            rating: parsed.rating,
+          },
+        })
+
+        await tx.topic.update({
           where: { id: parsed.topicId },
           data: {
             sessionCount: { increment: 1 },
@@ -79,29 +102,31 @@ export const POST = withAuth(
             statusUpdatedAt: now,
             doneAt: null,
           },
-        }),
-        // Award XP and update streak for the user
-        prisma.user.update({
+        })
+
+        await tx.user.update({
           where: { id: user.id },
           data: {
             totalXP: newTotalXP,
             streak: nextStreak,
             lastStudiedAt: now,
-            ...(timezone !== user.timezone ? { timezone } : {}),
+            ...(timezone !== lockedUser.timezone ? { timezone } : {}),
           },
-        }),
-      ])
+        })
+
+        return { session, xpAwarded, newTotalXP, previousLevel, newLevel, nextStreak }
+      })
 
       return NextResponse.json(
         {
-          session,
+          session: result.session,
           progression: {
-            xpAwarded,
-            totalXP: newTotalXP,
-            previousLevel,
-            newLevel,
-            leveledUp: newLevel > previousLevel,
-            streak: nextStreak,
+            xpAwarded: result.xpAwarded,
+            totalXP: result.newTotalXP,
+            previousLevel: result.previousLevel,
+            newLevel: result.newLevel,
+            leveledUp: result.newLevel > result.previousLevel,
+            streak: result.nextStreak,
           },
         },
         { status: 201 }
@@ -113,5 +138,6 @@ export const POST = withAuth(
         { status: 500 }
       )
     }
-  }
+  },
+  { rateLimit: SESSION_CREATE_RATE_LIMIT }
 )
