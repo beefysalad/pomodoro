@@ -123,6 +123,10 @@ export function TutorialGuide({ onComplete }: TutorialGuideProps) {
     () => PAGE_STEPS.find((step) => step.route === pathname),
     [pathname]
   )
+  const currentIndex = useMemo(
+    () => PAGE_STEPS.findIndex((step) => step.route === pathname),
+    [pathname]
+  )
 
   const rect = useTutorialTargetRect(currentStep?.targetId ?? '')
   const cardPlacement = useMemo(() => getCardPlacement(rect), [rect])
@@ -151,9 +155,7 @@ export function TutorialGuide({ onComplete }: TutorialGuideProps) {
         >
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-400">
-              <div className="text-lg font-bold">
-                {PAGE_STEPS.findIndex((step) => step.route === pathname) + 1}
-              </div>
+              <div className="text-lg font-bold">{currentIndex + 1}</div>
             </div>
             <button
               onClick={onComplete}
@@ -178,8 +180,7 @@ export function TutorialGuide({ onComplete }: TutorialGuideProps) {
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     PAGE_STEPS[i].route === pathname
                       ? 'w-6 bg-cyan-400'
-                      : PAGE_STEPS.findIndex((step) => step.route === pathname) >
-                          i
+                      : currentIndex > i
                         ? 'w-1.5 bg-cyan-400/50'
                         : 'w-1.5 bg-white/10'
                   }`}

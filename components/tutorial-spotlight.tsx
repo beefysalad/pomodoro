@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 
 export interface TutorialRect {
   top: number
@@ -13,12 +13,20 @@ export interface TutorialRect {
 
 const SPOTLIGHT_PADDING = 8
 
+// Falls back to useEffect on the server so this hook never triggers Next.js's
+// "useLayoutEffect does nothing on the server" warning, even if a future
+// caller mounts TutorialGuide somewhere that isn't gated behind client-only
+// data the way tutorial-auto-start.tsx does today.
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
 export function useTutorialTargetRect(targetId: string): TutorialRect | null {
   const [rect, setRect] = useState<TutorialRect | null>(null)
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     let frame: number | null = null
     let observer: ResizeObserver | null = null
+    let mutationObserver: MutationObserver | null = null
 
     const measure = () => {
       const el = document.getElementById(targetId)
@@ -45,13 +53,31 @@ export function useTutorialTargetRect(targetId: string): TutorialRect | null {
       })
     }
 
-    measure()
-
-    // Set up ResizeObserver for content-driven size changes
-    const el = document.getElementById(targetId)
-    if (el) {
+    const observeTarget = (el: HTMLElement) => {
       observer = new ResizeObserver(scheduleMeasure)
       observer.observe(el)
+    }
+
+    measure()
+
+    const el = document.getElementById(targetId)
+    if (el) {
+      observeTarget(el)
+    } else {
+      // Target isn't in the DOM yet (e.g. still loading) — watch for it to
+      // appear so the spotlight doesn't stay stuck hidden once it mounts.
+      mutationObserver = new MutationObserver(() => {
+        const lateEl = document.getElementById(targetId)
+        if (!lateEl) return
+        measure()
+        observeTarget(lateEl)
+        mutationObserver?.disconnect()
+        mutationObserver = null
+      })
+      mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      })
     }
 
     window.addEventListener('resize', scheduleMeasure)
@@ -59,6 +85,7 @@ export function useTutorialTargetRect(targetId: string): TutorialRect | null {
 
     return () => {
       if (observer) observer.disconnect()
+      if (mutationObserver) mutationObserver.disconnect()
       window.removeEventListener('resize', scheduleMeasure)
       window.removeEventListener('scroll', scheduleMeasure, true)
       if (frame !== null) cancelAnimationFrame(frame)
@@ -72,8 +99,12 @@ interface TutorialSpotlightProps {
   rect: TutorialRect | null
 }
 
+// transition-opacity only (not transition-all): these strips reposition on
+// every scroll/resize tick, and animating top/left/width/height there made
+// the spotlight visibly lag behind the actual scroll position. Opacity still
+// animates so the spotlight fades in cleanly on mount / step change.
 const STRIP_CLASS =
-  'fixed bg-slate-950/55 backdrop-blur-md transition-all duration-300'
+  'fixed bg-slate-950/55 backdrop-blur-md transition-opacity duration-200'
 
 export function TutorialSpotlight({ rect }: TutorialSpotlightProps) {
   if (!rect || typeof window === 'undefined') return null
