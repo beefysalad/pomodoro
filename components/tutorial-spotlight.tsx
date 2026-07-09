@@ -110,7 +110,7 @@ export function TutorialSpotlight({ rect }: TutorialSpotlightProps) {
       />
       {/* Glow ring around the spotlit element */}
       <div
-        className="absolute rounded-2xl border-2 border-violet-400/70 shadow-[0_0_24px_rgba(167,139,250,0.55)]"
+        className="absolute rounded-2xl border-2 border-violet-400/70 shadow-[0_0_24px_var(--color-violet-glow)]"
         style={{
           top: rect.top,
           left: rect.left,
