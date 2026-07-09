@@ -18,6 +18,7 @@ export function useTutorialTargetRect(targetId: string): TutorialRect | null {
 
   useLayoutEffect(() => {
     let frame: number | null = null
+    let observer: ResizeObserver | null = null
 
     const measure = () => {
       const el = document.getElementById(targetId)
@@ -45,10 +46,19 @@ export function useTutorialTargetRect(targetId: string): TutorialRect | null {
     }
 
     measure()
+
+    // Set up ResizeObserver for content-driven size changes
+    const el = document.getElementById(targetId)
+    if (el) {
+      observer = new ResizeObserver(scheduleMeasure)
+      observer.observe(el)
+    }
+
     window.addEventListener('resize', scheduleMeasure)
     window.addEventListener('scroll', scheduleMeasure, true)
 
     return () => {
+      if (observer) observer.disconnect()
       window.removeEventListener('resize', scheduleMeasure)
       window.removeEventListener('scroll', scheduleMeasure, true)
       if (frame !== null) cancelAnimationFrame(frame)
