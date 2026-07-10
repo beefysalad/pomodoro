@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from './prisma'
 import { User } from '@/app/generated/prisma/client'
 import { checkRateLimit, type RateLimitConfig } from './rate-limit'
+import * as userRepository from './repositories/user-repository'
+import { toErrorResponse } from './api-errors'
 
 export interface AuthContext {
   user: User
@@ -30,9 +32,7 @@ export function withAuth(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
 
-      const user = await prisma.user.findUnique({
-        where: { clerkUserId },
-      })
+      const user = await userRepository.findByClerkId(prisma, clerkUserId)
 
       let resolvedUser = user
       if (!resolvedUser) {
@@ -46,19 +46,11 @@ export function withAuth(
           )
         }
 
-        resolvedUser = await prisma.user.upsert({
-          where: { clerkUserId },
-          update: {
-            email,
-            firstName: clerkProfile?.firstName ?? null,
-            lastName: clerkProfile?.lastName ?? null,
-          },
-          create: {
-            clerkUserId,
-            email,
-            firstName: clerkProfile?.firstName ?? null,
-            lastName: clerkProfile?.lastName ?? null,
-          },
+        resolvedUser = await userRepository.upsertByClerkId(prisma, {
+          clerkUserId,
+          email,
+          firstName: clerkProfile?.firstName ?? null,
+          lastName: clerkProfile?.lastName ?? null,
         })
       }
 
@@ -92,11 +84,7 @@ export function withAuth(
 
       return await handler(req, authContext)
     } catch (error) {
-      console.error('Auth helper error:', error)
-      return NextResponse.json(
-        { error: 'Internal Server Error' },
-        { status: 500 }
-      )
+      return toErrorResponse(error, 'Auth helper error')
     }
   }
 }
