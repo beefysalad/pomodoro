@@ -2,9 +2,17 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import prisma from '@/lib/prisma'
 import * as userRepository from '@/lib/repositories/user-repository'
 import { updateUserPreferences } from './user-service'
+import type { User } from '@/app/generated/prisma/client'
 
 vi.mock('@/lib/prisma', () => ({ default: {} }))
 vi.mock('@/lib/repositories/user-repository')
+
+// Builds a fake of T from a partial shape without using `any` — every test
+// file in this plan that needs a fake Prisma-shaped object uses this same
+// helper, redefined locally per file.
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
 
 describe('updateUserPreferences', () => {
   beforeEach(() => {
@@ -12,7 +20,7 @@ describe('updateUserPreferences', () => {
   })
 
   it('passes the input through to the repository with the shared prisma client', async () => {
-    const fakeUser = { id: 'user_1' } as any
+    const fakeUser = fake<User>({ id: 'user_1' })
     vi.mocked(userRepository.updatePreferences).mockResolvedValue(fakeUser)
 
     const result = await updateUserPreferences('user_1', {
