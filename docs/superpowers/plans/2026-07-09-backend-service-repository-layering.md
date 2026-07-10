@@ -15,6 +15,7 @@
 - No route keeps its own `try/catch` once wrapped in `withAuth` — errors propagate and `withAuth`'s catch calls `toErrorResponse`.
 - `quote` and `spotify` integration routes are out of scope — do not touch them.
 - Response JSON shapes must stay byte-identical to today's, except: (1) ownership-check failures return `404` instead of the previous mix of `403`/`404`, (2) `app/api/topics/[topicId]/flashcards/route.ts` is deleted (dead duplicate, verified unreferenced).
+- No file in this plan uses the literal type `any` — this repo's ESLint config (`eslint-config-next/typescript`) enforces `@typescript-eslint/no-explicit-any` as an error with zero existing precedent for `any` or `eslint-disable` anywhere in the codebase. Every test file that needs a fake Prisma-shaped object defines a local `function fake<T>(partial: Partial<T>): T { return partial as T }` and calls it as `fake<ModelType>({...})` instead of `{...} as any`. `lib/db.ts`'s `ExtractTx` type uses `options?: infer O` (an inferred, unnamed type parameter), never `any`.
 - Full spec: `docs/superpowers/specs/2026-07-09-backend-service-repository-layering-design.md`.
 
 ---
@@ -216,7 +217,9 @@ import prisma from './prisma'
 // interactive-callback overload, so Db covers both the shared client and a
 // transaction client without depending on Prisma's internal type names.
 type TransactionCallback<T> = (tx: T) => Promise<unknown>
-type ExtractTx<F> = F extends (fn: TransactionCallback<infer T>, options?: any) => any
+// options is inferred (not typed `any`/`unknown`) — that's what keeps the
+// overload match working; typing it explicitly breaks the inference.
+type ExtractTx<F> = F extends (fn: TransactionCallback<infer T>, options?: infer O) => unknown
   ? T
   : never
 
@@ -266,9 +269,17 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import prisma from '@/lib/prisma'
 import * as userRepository from '@/lib/repositories/user-repository'
 import { updateUserPreferences } from './user-service'
+import type { User } from '@/app/generated/prisma/client'
 
 vi.mock('@/lib/prisma', () => ({ default: {} }))
 vi.mock('@/lib/repositories/user-repository')
+
+// Builds a fake of T from a partial shape without using `any` — every test
+// file in this plan that needs a fake Prisma-shaped object uses this same
+// helper, imported or redefined locally per file.
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
 
 describe('updateUserPreferences', () => {
   beforeEach(() => {
@@ -276,7 +287,7 @@ describe('updateUserPreferences', () => {
   })
 
   it('passes the input through to the repository with the shared prisma client', async () => {
-    const fakeUser = { id: 'user_1' } as any
+    const fakeUser = fake<User>({ id: 'user_1' })
     vi.mocked(userRepository.updatePreferences).mockResolvedValue(fakeUser)
 
     const result = await updateUserPreferences('user_1', {
@@ -739,6 +750,7 @@ import {
   deleteSubject,
   assertOwnedSubject,
 } from './subject-service'
+import type { Subject } from '@/app/generated/prisma/client'
 
 vi.mock('@/lib/prisma', () => ({
   default: { $transaction: vi.fn((ops) => Promise.all(ops)) },
@@ -746,16 +758,22 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/lib/repositories/subject-repository')
 vi.mock('@/lib/helper')
 
+// Builds a fake of T from a partial shape without using `any` — every test
+// file in this plan that needs a fake Prisma-shaped object uses this same
+// helper, redefined locally per file.
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
+
 describe('assertOwnedSubject', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('throws NotFoundError when the subject belongs to another user', async () => {
-    vi.mocked(subjectRepository.findById).mockResolvedValue({
-      id: 'subj_1',
-      userId: 'someone_else',
-    } as any)
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'someone_else' })
+    )
 
     await expect(assertOwnedSubject('user_1', 'subj_1')).rejects.toThrow(NotFoundError)
   })
@@ -767,7 +785,7 @@ describe('assertOwnedSubject', () => {
   })
 
   it('returns the subject when it belongs to the user', async () => {
-    const fakeSubject = { id: 'subj_1', userId: 'user_1' } as any
+    const fakeSubject = fake<Subject>({ id: 'subj_1', userId: 'user_1' })
     vi.mocked(subjectRepository.findById).mockResolvedValue(fakeSubject)
 
     await expect(assertOwnedSubject('user_1', 'subj_1')).resolves.toBe(fakeSubject)
@@ -782,7 +800,7 @@ describe('createSubject', () => {
   it('positions the new subject after the current last one and generates a slug', async () => {
     vi.mocked(subjectRepository.findLastPositionByUserId).mockResolvedValue({ position: 2 })
     vi.mocked(helper.generateUniqueSlug).mockResolvedValue('algebra')
-    const fakeSubject = { id: 'subj_1' } as any
+    const fakeSubject = fake<Subject>({ id: 'subj_1' })
     vi.mocked(subjectRepository.create).mockResolvedValue(fakeSubject)
 
     const result = await createSubject('user_1', { name: 'Algebra', color: '#EF4444' })
@@ -800,7 +818,7 @@ describe('createSubject', () => {
   it('defaults new subjects to position 0 when the user has none yet', async () => {
     vi.mocked(subjectRepository.findLastPositionByUserId).mockResolvedValue(null)
     vi.mocked(helper.generateUniqueSlug).mockResolvedValue('biology')
-    vi.mocked(subjectRepository.create).mockResolvedValue({ id: 'subj_2' } as any)
+    vi.mocked(subjectRepository.create).mockResolvedValue(fake<Subject>({ id: 'subj_2' }))
 
     await createSubject('user_1', { name: 'Biology', color: '#10B981' })
 
@@ -817,7 +835,7 @@ describe('reorderSubjects', () => {
   })
 
   it('updates every subject position scoped to the owning user inside one transaction', async () => {
-    vi.mocked(subjectRepository.updatePosition).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(subjectRepository.updatePosition).mockResolvedValue(fake<{ count: number }>({ count: 1 }))
 
     await reorderSubjects('user_1', [
       { id: 'subj_1', position: 0 },
@@ -832,7 +850,7 @@ describe('reorderSubjects', () => {
 
 describe('deleteSubject', () => {
   it('deletes scoped to the owning user', async () => {
-    vi.mocked(subjectRepository.deleteByIdForUser).mockResolvedValue({ id: 'subj_1' } as any)
+    vi.mocked(subjectRepository.deleteByIdForUser).mockResolvedValue(fake<Subject>({ id: 'subj_1' }))
 
     await deleteSubject('user_1', 'subj_1')
 
@@ -1108,10 +1126,22 @@ import * as topicRepository from '@/lib/repositories/topic-repository'
 import * as subjectRepository from '@/lib/repositories/subject-repository'
 import { NotFoundError } from '@/lib/errors'
 import { createTopic, updateTopic, deleteTopic } from './topic-service'
+import type { Topic, Subject } from '@/app/generated/prisma/client'
 
 vi.mock('@/lib/prisma', () => ({ default: {} }))
 vi.mock('@/lib/repositories/topic-repository')
 vi.mock('@/lib/repositories/subject-repository')
+
+// Builds a fake of T from a partial shape without using `any` — every test
+// file in this plan that needs a fake Prisma-shaped object uses this same
+// helper, redefined locally per file.
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
+
+type TopicWithSubject = NonNullable<
+  Awaited<ReturnType<typeof topicRepository.findByIdWithSubject>>
+>
 
 describe('createTopic', () => {
   beforeEach(() => {
@@ -1119,10 +1149,9 @@ describe('createTopic', () => {
   })
 
   it('throws NotFoundError when the subject does not belong to the user', async () => {
-    vi.mocked(subjectRepository.findById).mockResolvedValue({
-      id: 'subj_1',
-      userId: 'someone_else',
-    } as any)
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'someone_else' })
+    )
 
     await expect(createTopic('user_1', 'subj_1', { name: 'Chapter 1' })).rejects.toThrow(
       NotFoundError
@@ -1130,9 +1159,11 @@ describe('createTopic', () => {
   })
 
   it('positions the new topic after the current last one', async () => {
-    vi.mocked(subjectRepository.findById).mockResolvedValue({ id: 'subj_1', userId: 'user_1' } as any)
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'user_1' })
+    )
     vi.mocked(topicRepository.findLastPositionBySubjectId).mockResolvedValue({ position: 4 })
-    const fakeTopic = { id: 'topic_1' } as any
+    const fakeTopic = fake<Topic>({ id: 'topic_1' })
     vi.mocked(topicRepository.create).mockResolvedValue(fakeTopic)
 
     const result = await createTopic('user_1', 'subj_1', { name: 'Chapter 2' })
@@ -1152,11 +1183,13 @@ describe('updateTopic', () => {
   })
 
   it('throws NotFoundError when the topic belongs to a different subject', async () => {
-    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'topic_1',
-      subjectId: 'subj_other',
-      subject: { userId: 'user_1' },
-    } as any)
+    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue(
+      fake<TopicWithSubject>({
+        id: 'topic_1',
+        subjectId: 'subj_other',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
 
     await expect(
       updateTopic('user_1', 'subj_1', 'topic_1', { name: 'Renamed' })
@@ -1164,12 +1197,14 @@ describe('updateTopic', () => {
   })
 
   it('stamps statusUpdatedAt and doneAt when status moves to DONE', async () => {
-    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'topic_1',
-      subjectId: 'subj_1',
-      subject: { userId: 'user_1' },
-    } as any)
-    vi.mocked(topicRepository.update).mockResolvedValue({ id: 'topic_1' } as any)
+    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue(
+      fake<TopicWithSubject>({
+        id: 'topic_1',
+        subjectId: 'subj_1',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
+    vi.mocked(topicRepository.update).mockResolvedValue(fake<Topic>({ id: 'topic_1' }))
 
     await updateTopic('user_1', 'subj_1', 'topic_1', { status: 'DONE' })
 
@@ -1181,12 +1216,14 @@ describe('updateTopic', () => {
   })
 
   it('clears doneAt when status moves to a non-DONE state', async () => {
-    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'topic_1',
-      subjectId: 'subj_1',
-      subject: { userId: 'user_1' },
-    } as any)
-    vi.mocked(topicRepository.update).mockResolvedValue({ id: 'topic_1' } as any)
+    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue(
+      fake<TopicWithSubject>({
+        id: 'topic_1',
+        subjectId: 'subj_1',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
+    vi.mocked(topicRepository.update).mockResolvedValue(fake<Topic>({ id: 'topic_1' }))
 
     await updateTopic('user_1', 'subj_1', 'topic_1', { status: 'IN_PROGRESS' })
 
@@ -1200,12 +1237,14 @@ describe('updateTopic', () => {
 
 describe('deleteTopic', () => {
   it('deletes after confirming ownership', async () => {
-    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'topic_1',
-      subjectId: 'subj_1',
-      subject: { userId: 'user_1' },
-    } as any)
-    vi.mocked(topicRepository.deleteById).mockResolvedValue({ id: 'topic_1' } as any)
+    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue(
+      fake<TopicWithSubject>({
+        id: 'topic_1',
+        subjectId: 'subj_1',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
+    vi.mocked(topicRepository.deleteById).mockResolvedValue(fake<Topic>({ id: 'topic_1' }))
 
     await deleteTopic('user_1', 'subj_1', 'topic_1')
 
@@ -1541,6 +1580,8 @@ import * as topicRepository from '@/lib/repositories/topic-repository'
 import * as userRepository from '@/lib/repositories/user-repository'
 import { NotFoundError } from '@/lib/errors'
 import { recordSession, resolveTimezone } from './session-service'
+import type { Db } from '@/lib/db'
+import type { Topic, Subject, Session } from '@/app/generated/prisma/client'
 
 vi.mock('@/lib/prisma', () => ({
   default: { $transaction: vi.fn() },
@@ -1549,7 +1590,24 @@ vi.mock('@/lib/repositories/session-repository')
 vi.mock('@/lib/repositories/topic-repository')
 vi.mock('@/lib/repositories/user-repository')
 
-const FAKE_TX = { __tx: true } as any
+// Builds a fake of T from a partial shape without using `any` — every test
+// file in this plan that needs a fake Prisma-shaped object uses this same
+// helper, redefined locally per file.
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
+
+type TopicWithSubject = NonNullable<
+  Awaited<ReturnType<typeof topicRepository.findByIdWithSubject>>
+>
+
+const FAKE_TX = fake<Db>({})
+
+// Typed stand-in for prisma.$transaction's interactive-callback overload, so
+// mockImplementation below never needs an `any`-typed parameter.
+function runWithFakeTx<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
+  return fn(FAKE_TX)
+}
 
 describe('resolveTimezone', () => {
   it('returns the candidate when it is a valid IANA timezone', () => {
@@ -1568,14 +1626,16 @@ describe('resolveTimezone', () => {
 describe('recordSession', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(prisma.$transaction).mockImplementation((fn: any) => fn(FAKE_TX))
+    vi.mocked(prisma.$transaction).mockImplementation(runWithFakeTx as typeof prisma.$transaction)
   })
 
   it('throws NotFoundError when the topic does not belong to the user', async () => {
-    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'topic_1',
-      subject: { userId: 'someone_else' },
-    } as any)
+    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue(
+      fake<TopicWithSubject>({
+        id: 'topic_1',
+        subject: fake<Subject>({ userId: 'someone_else' }),
+      })
+    )
 
     await expect(
       recordSession('user_1', { topicId: 'topic_1', mode: 'focus', duration: 1500, rating: 2 }, null)
@@ -1585,19 +1645,21 @@ describe('recordSession', () => {
   })
 
   it('awards MODE_XP for the mode and computes the new level/streak from the locked row', async () => {
-    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'topic_1',
-      subject: { userId: 'user_1' },
-    } as any)
+    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue(
+      fake<TopicWithSubject>({
+        id: 'topic_1',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
     vi.mocked(userRepository.lockForUpdate).mockResolvedValue({
       totalXP: 90,
       streak: 2,
       lastStudiedAt: null,
       timezone: 'UTC',
     })
-    vi.mocked(sessionRepository.create).mockResolvedValue({ id: 'session_1' } as any)
-    vi.mocked(topicRepository.incrementSessionStats).mockResolvedValue({ id: 'topic_1' } as any)
-    vi.mocked(userRepository.updateProgression).mockResolvedValue({ id: 'user_1' } as any)
+    vi.mocked(sessionRepository.create).mockResolvedValue(fake<Session>({ id: 'session_1' }))
+    vi.mocked(topicRepository.incrementSessionStats).mockResolvedValue(fake<Topic>({ id: 'topic_1' }))
+    vi.mocked(userRepository.updateProgression).mockResolvedValue(fake<Awaited<ReturnType<typeof userRepository.updateProgression>>>({ id: 'user_1' }))
 
     const result = await recordSession(
       'user_1',
@@ -1632,10 +1694,12 @@ describe('recordSession', () => {
   })
 
   it('throws when the locked user row is missing', async () => {
-    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'topic_1',
-      subject: { userId: 'user_1' },
-    } as any)
+    vi.mocked(topicRepository.findByIdWithSubject).mockResolvedValue(
+      fake<TopicWithSubject>({
+        id: 'topic_1',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
     vi.mocked(userRepository.lockForUpdate).mockResolvedValue(null)
 
     await expect(
@@ -1870,10 +1934,18 @@ import * as flashcardDeckRepository from '@/lib/repositories/flashcard-deck-repo
 import * as subjectRepository from '@/lib/repositories/subject-repository'
 import { NotFoundError } from '@/lib/errors'
 import { createDeck, updateDeck, deleteDeck } from './flashcard-deck-service'
+import type { Subject, FlashcardDeck } from '@/app/generated/prisma/client'
 
 vi.mock('@/lib/prisma', () => ({ default: {} }))
 vi.mock('@/lib/repositories/flashcard-deck-repository')
 vi.mock('@/lib/repositories/subject-repository')
+
+// Builds a fake of T from a partial shape without using `any` — every test
+// file in this plan that needs a fake Prisma-shaped object uses this same
+// helper, redefined locally per file.
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
 
 describe('createDeck', () => {
   beforeEach(() => {
@@ -1881,17 +1953,18 @@ describe('createDeck', () => {
   })
 
   it('throws NotFoundError when the subject does not belong to the user', async () => {
-    vi.mocked(subjectRepository.findById).mockResolvedValue({
-      id: 'subj_1',
-      userId: 'someone_else',
-    } as any)
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'someone_else' })
+    )
 
     await expect(createDeck('user_1', 'subj_1', 'Deck A')).rejects.toThrow(NotFoundError)
   })
 
   it('creates the deck under the subject once ownership is confirmed', async () => {
-    vi.mocked(subjectRepository.findById).mockResolvedValue({ id: 'subj_1', userId: 'user_1' } as any)
-    const fakeDeck = { id: 'deck_1' } as any
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'user_1' })
+    )
+    const fakeDeck = fake<FlashcardDeck>({ id: 'deck_1' })
     vi.mocked(flashcardDeckRepository.create).mockResolvedValue(fakeDeck)
 
     const result = await createDeck('user_1', 'subj_1', 'Deck A')
@@ -1906,11 +1979,12 @@ describe('createDeck', () => {
 
 describe('updateDeck', () => {
   it('throws NotFoundError when the deck belongs to a different subject', async () => {
-    vi.mocked(subjectRepository.findById).mockResolvedValue({ id: 'subj_1', userId: 'user_1' } as any)
-    vi.mocked(flashcardDeckRepository.findById).mockResolvedValue({
-      id: 'deck_1',
-      subjectId: 'subj_other',
-    } as any)
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'user_1' })
+    )
+    vi.mocked(flashcardDeckRepository.findById).mockResolvedValue(
+      fake<FlashcardDeck>({ id: 'deck_1', subjectId: 'subj_other' })
+    )
 
     await expect(updateDeck('user_1', 'subj_1', 'deck_1', 'Renamed')).rejects.toThrow(NotFoundError)
   })
@@ -1918,12 +1992,13 @@ describe('updateDeck', () => {
 
 describe('deleteDeck', () => {
   it('deletes after confirming ownership', async () => {
-    vi.mocked(subjectRepository.findById).mockResolvedValue({ id: 'subj_1', userId: 'user_1' } as any)
-    vi.mocked(flashcardDeckRepository.findById).mockResolvedValue({
-      id: 'deck_1',
-      subjectId: 'subj_1',
-    } as any)
-    vi.mocked(flashcardDeckRepository.deleteById).mockResolvedValue({ id: 'deck_1' } as any)
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'user_1' })
+    )
+    vi.mocked(flashcardDeckRepository.findById).mockResolvedValue(
+      fake<FlashcardDeck>({ id: 'deck_1', subjectId: 'subj_1' })
+    )
+    vi.mocked(flashcardDeckRepository.deleteById).mockResolvedValue(fake<FlashcardDeck>({ id: 'deck_1' }))
 
     await deleteDeck('user_1', 'subj_1', 'deck_1')
 
@@ -2178,10 +2253,25 @@ import * as flashcardRepository from '@/lib/repositories/flashcard-repository'
 import * as flashcardDeckRepository from '@/lib/repositories/flashcard-deck-repository'
 import { NotFoundError } from '@/lib/errors'
 import { createCard, updateCard } from './flashcard-service'
+import type { Flashcard, Subject } from '@/app/generated/prisma/client'
 
 vi.mock('@/lib/prisma', () => ({ default: {} }))
 vi.mock('@/lib/repositories/flashcard-repository')
 vi.mock('@/lib/repositories/flashcard-deck-repository')
+
+// Builds a fake of T from a partial shape without using `any` — every test
+// file in this plan that needs a fake Prisma-shaped object uses this same
+// helper, redefined locally per file.
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
+
+type DeckWithSubject = NonNullable<
+  Awaited<ReturnType<typeof flashcardDeckRepository.findByIdWithSubject>>
+>
+type CardWithDeckSubject = NonNullable<
+  Awaited<ReturnType<typeof flashcardRepository.findByIdWithDeckSubject>>
+>
 
 describe('createCard', () => {
   beforeEach(() => {
@@ -2189,10 +2279,12 @@ describe('createCard', () => {
   })
 
   it('throws NotFoundError when the deck does not belong to the user', async () => {
-    vi.mocked(flashcardDeckRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'deck_1',
-      subject: { userId: 'someone_else' },
-    } as any)
+    vi.mocked(flashcardDeckRepository.findByIdWithSubject).mockResolvedValue(
+      fake<DeckWithSubject>({
+        id: 'deck_1',
+        subject: fake<Subject>({ userId: 'someone_else' }),
+      })
+    )
 
     await expect(
       createCard('user_1', 'deck_1', { question: 'Q', answer: 'A' })
@@ -2200,11 +2292,13 @@ describe('createCard', () => {
   })
 
   it('de-duplicates choices, trims whitespace, adds the answer if missing, and caps at 6', async () => {
-    vi.mocked(flashcardDeckRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'deck_1',
-      subject: { userId: 'user_1' },
-    } as any)
-    vi.mocked(flashcardRepository.create).mockResolvedValue({ id: 'card_1' } as any)
+    vi.mocked(flashcardDeckRepository.findByIdWithSubject).mockResolvedValue(
+      fake<DeckWithSubject>({
+        id: 'deck_1',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
+    vi.mocked(flashcardRepository.create).mockResolvedValue(fake<Flashcard>({ id: 'card_1' }))
 
     await createCard('user_1', 'deck_1', {
       question: 'Q',
@@ -2222,11 +2316,13 @@ describe('createCard', () => {
   })
 
   it('appends the answer when it is missing from the provided choices', async () => {
-    vi.mocked(flashcardDeckRepository.findByIdWithSubject).mockResolvedValue({
-      id: 'deck_1',
-      subject: { userId: 'user_1' },
-    } as any)
-    vi.mocked(flashcardRepository.create).mockResolvedValue({ id: 'card_1' } as any)
+    vi.mocked(flashcardDeckRepository.findByIdWithSubject).mockResolvedValue(
+      fake<DeckWithSubject>({
+        id: 'deck_1',
+        subject: fake<Subject>({ userId: 'user_1' }),
+      })
+    )
+    vi.mocked(flashcardRepository.create).mockResolvedValue(fake<Flashcard>({ id: 'card_1' }))
 
     await createCard('user_1', 'deck_1', {
       question: 'Q',
@@ -2247,11 +2343,15 @@ describe('updateCard', () => {
   })
 
   it('throws NotFoundError when the card does not belong to the given deck', async () => {
-    vi.mocked(flashcardRepository.findByIdWithDeckSubject).mockResolvedValue({
-      id: 'card_1',
-      deckId: 'deck_other',
-      deck: { subject: { userId: 'user_1' } },
-    } as any)
+    vi.mocked(flashcardRepository.findByIdWithDeckSubject).mockResolvedValue(
+      fake<CardWithDeckSubject>({
+        id: 'card_1',
+        deckId: 'deck_other',
+        deck: fake<CardWithDeckSubject['deck']>({
+          subject: fake<Subject>({ userId: 'user_1' }),
+        }),
+      })
+    )
 
     await expect(
       updateCard('user_1', 'deck_1', 'card_1', { question: 'New question' })
@@ -2259,12 +2359,16 @@ describe('updateCard', () => {
   })
 
   it('leaves choices untouched when the update does not include them', async () => {
-    vi.mocked(flashcardRepository.findByIdWithDeckSubject).mockResolvedValue({
-      id: 'card_1',
-      deckId: 'deck_1',
-      deck: { subject: { userId: 'user_1' } },
-    } as any)
-    vi.mocked(flashcardRepository.update).mockResolvedValue({ id: 'card_1' } as any)
+    vi.mocked(flashcardRepository.findByIdWithDeckSubject).mockResolvedValue(
+      fake<CardWithDeckSubject>({
+        id: 'card_1',
+        deckId: 'deck_1',
+        deck: fake<CardWithDeckSubject['deck']>({
+          subject: fake<Subject>({ userId: 'user_1' }),
+        }),
+      })
+    )
+    vi.mocked(flashcardRepository.update).mockResolvedValue(fake<Flashcard>({ id: 'card_1' }))
 
     await updateCard('user_1', 'deck_1', 'card_1', { question: 'New question' })
 
