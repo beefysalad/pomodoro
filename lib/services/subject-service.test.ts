@@ -108,11 +108,27 @@ describe('reorderSubjects', () => {
 })
 
 describe('deleteSubject', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('deletes scoped to the owning user', async () => {
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'user_1' })
+    )
     vi.mocked(subjectRepository.deleteByIdForUser).mockResolvedValue(fake<Subject>({ id: 'subj_1' }))
 
     await deleteSubject('user_1', 'subj_1')
 
     expect(subjectRepository.deleteByIdForUser).toHaveBeenCalledWith(prisma, 'subj_1', 'user_1')
+  })
+
+  it('throws NotFoundError instead of deleting when the subject belongs to another user', async () => {
+    vi.mocked(subjectRepository.findById).mockResolvedValue(
+      fake<Subject>({ id: 'subj_1', userId: 'someone_else' })
+    )
+
+    await expect(deleteSubject('user_1', 'subj_1')).rejects.toThrow(NotFoundError)
+    expect(subjectRepository.deleteByIdForUser).not.toHaveBeenCalled()
   })
 })

@@ -50,5 +50,6 @@ export async function reorderSubjects(userId: string, updates: ReorderUpdate[]):
 }
 
 export async function deleteSubject(userId: string, subjectId: string): Promise<void> {
+  await assertOwnedSubject(userId, subjectId)
   await subjectRepository.deleteByIdForUser(prisma, subjectId, userId)
 }
