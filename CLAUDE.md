@@ -39,6 +39,8 @@ Each domain (subjects, topics, sessions, flashcards, leaderboard, user, quote) f
 
 Pages under `app/` stay thin and compose hooks + components; business logic lives in `lib/`.
 
+**Rule, not just convention:** never call `fetch()` directly from a component and never fetch inside a `useEffect` — always go through a `lib/api/<resource>.ts` wrapper (using the shared `axios` instance from `lib/axios.ts`) called from a TanStack Query `useQuery`/`useMutation` hook in `hooks/use-<resource>.ts`. `app/settings/page.tsx` and `app/spotify-poc/page.tsx` currently violate this (raw `fetch()` + `useEffect` for the Spotify status/disconnect calls) — that's a known pre-existing gap, not a pattern to copy; migrate it to a `lib/api/spotify.ts` + `hooks/use-spotify.ts` pair if you touch that code.
+
 ### Prisma specifics
 
 - Generated client output is `app/generated/prisma` (not `node_modules/@prisma/client`) — import types from `@/app/generated/prisma/client`.
@@ -54,6 +56,8 @@ Pages under `app/` stay thin and compose hooks + components; business logic live
 ### Design system
 
 The UI is dark-mode-only with a strict violet/streak-orange palette and `Geist Mono` as the only font. Full rules (color tokens, typography scale, glow-not-shadow conventions, spacing) are documented in `docs/DESIGN-SYSTEM.md` — read it before writing or reviewing UI code. Don't use default Tailwind shadows or non-mono fonts; use the semantic color classes (e.g. `text-violet-mid`) defined in `app/globals.css` rather than raw hex values.
+
+Two more rules from that doc worth repeating here since they're easy to miss: (1) prefer an existing `components/ui/*` (shadcn) component over hand-rolling a new one — check there first; (2) don't hardcode one-off styling (`bg-white/[0.04]`, `font-[700]`) on a page/feature component when a shadcn primitive already renders that surface — the styling belongs in the shared `components/ui/*.tsx` component so a branding change is one edit, not a repo-wide search. See `docs/DESIGN-SYSTEM.md` §5 for known existing offenders to clean up opportunistically.
 
 `docs/agents.md` is a stale leftover from the original Next.js/Prisma boilerplate template (describes NextAuth-based login flow, references a `FEATURES.md` that doesn't exist in this repo) — prefer this CLAUDE.md over it.
 
