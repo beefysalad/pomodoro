@@ -60,23 +60,9 @@ import {
   TOPIC_STATUS_LABEL,
   type TopicStatus,
 } from '@/lib/topic-status'
-
-function formatDuration(totalSeconds: number) {
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  if (totalMinutes < 60) return `${totalMinutes}m`
-  const hours = Math.floor(totalMinutes / 60)
-  const mins = totalMinutes % 60
-  return `${hours}h ${mins}m`
-}
-
-function shuffle<T>(items: T[]) {
-  const list = [...items]
-  for (let i = list.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[list[i], list[j]] = [list[j], list[i]]
-  }
-  return list
-}
+import { formatDuration } from '@/lib/format'
+import { shuffle } from '@/lib/shuffle'
+import { StatCard } from '@/components/subjects-detail/stat-card'
 
 const getNow = () => Date.now()
 
@@ -1475,16 +1461,5 @@ export default function SubjectDetailPage() {
         pending={deleteDeck.isPending}
       />
     </div>
-  )
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
-      <CardContent className="px-4 py-4 sm:px-5">
-        <p className="text-xs text-slate-400">{label}</p>
-        <p className="mt-1 text-2xl font-extrabold text-white">{value}</p>
-      </CardContent>
-    </Card>
   )
 }
