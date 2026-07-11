@@ -1,13 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
-  GripVertical,
   Plus,
   Trash2,
   BookOpen,
@@ -55,30 +54,13 @@ import {
   useUpdateFlashcardDeck,
   useDeleteFlashcardDeck,
 } from '@/hooks/use-flashcard-decks'
-import {
-  TOPIC_STATUSES,
-  TOPIC_STATUS_LABEL,
-  type TopicStatus,
-} from '@/lib/topic-status'
-
-function formatDuration(totalSeconds: number) {
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  if (totalMinutes < 60) return `${totalMinutes}m`
-  const hours = Math.floor(totalMinutes / 60)
-  const mins = totalMinutes % 60
-  return `${hours}h ${mins}m`
-}
-
-function shuffle<T>(items: T[]) {
-  const list = [...items]
-  for (let i = list.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[list[i], list[j]] = [list[j], list[i]]
-  }
-  return list
-}
-
-const getNow = () => Date.now()
+import { TOPIC_STATUSES, type TopicStatus } from '@/lib/topic-status'
+import { formatDuration } from '@/lib/format'
+import { StatCard } from '@/components/subjects-detail/stat-card'
+import { TopicBoard } from '@/components/subjects-detail/topic-board'
+import { FlashcardStudyModal } from '@/components/subjects-detail/flashcard-study-modal'
+import { FlashcardQuizModal } from '@/components/subjects-detail/flashcard-quiz-modal'
+import { useFlashcardQuiz } from '@/hooks/use-flashcard-quiz'
 
 export default function SubjectDetailPage() {
   const router = useRouter()
@@ -111,100 +93,18 @@ export default function SubjectDetailPage() {
     }
     router.push(`?${params.toString()}`, { scroll: false })
   }
-  const [studyIndex, setStudyIndex] = useState(0)
-  const [showAnswer, setShowAnswer] = useState(false)
-  const [isStudyOpen, setIsStudyOpen] = useState(false)
-  const [isQuizOpen, setIsQuizOpen] = useState(false)
-  const [testActive, setTestActive] = useState(false)
-  const [testItems, setTestItems] = useState<
-    Array<{ id: string; question: string; answer: string; choices: string[] }>
-  >([])
-  const [testIndex, setTestIndex] = useState(0)
-  const [testScore, setTestScore] = useState(0)
-  const [testResponses, setTestResponses] = useState<Record<string, string>>(
-    {}
-  )
-  const [quizTimeLeft, setQuizTimeLeft] = useState(20)
-  const [quizSecondsPerQuestion, setQuizSecondsPerQuestion] = useState(20)
-  const quizDeadlineRef = useRef<number | null>(null)
-  const testIndexRef = useRef(0)
-  const testItemsRef = useRef(testItems)
-  const [draggingTopicId, setDraggingTopicId] = useState('')
-  const [activeDropStatus, setActiveDropStatus] = useState<TopicStatus | null>(
-    null
-  )
   const [editingDeck, setEditingDeck] = useState<{
     id: string
     name: string
   } | null>(null)
   const [deletingDeckId, setDeletingDeckId] = useState<string | null>(null)
 
-  const [dragPreview, setDragPreview] = useState<{
-    id: string
-    name: string
-    totalTime: number
-    sessions: number
-    x: number
-    y: number
-  } | null>(null)
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false)
   const [deleteTopicState, setDeleteTopicState] = useState<{
     id: string
     name: string
   } | null>(null)
   const [pageMessage, setPageMessage] = useState('')
-  const transparentDragImage = useMemo(() => {
-    if (typeof window === 'undefined') return null
-    const image = new window.Image()
-    image.src =
-      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
-    return image
-  }, [])
-
-  const onDragStartTopic = (
-    event: React.DragEvent<HTMLDivElement>,
-    topic: {
-      id: string
-      name: string
-      totalTime: number
-      _count: { sessions: number }
-    }
-  ) => {
-    setDraggingTopicId(topic.id)
-    setDragPreview({
-      id: topic.id,
-      name: topic.name,
-      totalTime: topic.totalTime,
-      sessions: topic._count.sessions,
-      x: event.clientX,
-      y: event.clientY,
-    })
-
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/topic-id', topic.id)
-    if (transparentDragImage) {
-      event.dataTransfer.setDragImage(transparentDragImage, 0, 0)
-    }
-  }
-
-  const onDragTopic = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!draggingTopicId || event.clientX <= 0 || event.clientY <= 0) return
-    setDragPreview((prev) =>
-      prev
-        ? {
-            ...prev,
-            x: event.clientX,
-            y: event.clientY,
-          }
-        : prev
-    )
-  }
-
-  const clearDragState = () => {
-    setDraggingTopicId('')
-    setActiveDropStatus(null)
-    setDragPreview(null)
-  }
 
   const topicStats = useMemo(() => {
     const topics = subject?.topics ?? []
@@ -234,14 +134,6 @@ export default function SubjectDetailPage() {
     }
   }, [subject])
 
-  useEffect(() => {
-    testIndexRef.current = testIndex
-  }, [testIndex])
-
-  useEffect(() => {
-    testItemsRef.current = testItems
-  }, [testItems])
-
   const { data: decks = [] } = useFlashcardDecks(subjectId)
   const updateDeck = useUpdateFlashcardDeck(subjectId)
   const deleteDeck = useDeleteFlashcardDeck(subjectId)
@@ -252,7 +144,30 @@ export default function SubjectDetailPage() {
   const updateFlashcard = useUpdateFlashcard(resolvedFlashcardDeckId)
   const deleteFlashcard = useDeleteFlashcard(resolvedFlashcardDeckId)
   const flashcardStats = useFlashcardStats(flashcards)
-  const activeStudyCard = flashcards[studyIndex]
+
+  const {
+    studyIndex,
+    setStudyIndex,
+    showAnswer,
+    setShowAnswer,
+    isStudyOpen,
+    setIsStudyOpen,
+    isQuizOpen,
+    setIsQuizOpen,
+    testActive,
+    setTestActive,
+    testItems,
+    testIndex,
+    testScore,
+    testResponses,
+    quizTimeLeft,
+    quizSecondsPerQuestion,
+    setQuizSecondsPerQuestion,
+    activeStudyCard,
+    normalizeAnswer,
+    onStartTest,
+    onSelectTestChoice,
+  } = useFlashcardQuiz(flashcards)
 
   const onCreateTopic = async () => {
     const name = newTopicName.trim()
@@ -316,109 +231,6 @@ export default function SubjectDetailPage() {
       toast.error('Could not delete deck')
     }
   }
-
-  const normalizeAnswer = (value: string) => value.trim().toLowerCase()
-
-  const onStartTest = (count: number) => {
-    const base = shuffle(
-      flashcards.map((card) => ({
-        id: card.id,
-        question: card.question,
-        answer: card.answer,
-        choices: card.choices ?? [],
-      }))
-    )
-    const items = base.slice(0, Math.min(count, base.length)).map((card) => {
-      if (card.choices.length >= 2) {
-        const baseChoices = Array.from(new Set([card.answer, ...card.choices]))
-        const choices = shuffle(baseChoices).slice(0, 4)
-        return { ...card, choices }
-      }
-
-      const otherAnswers = shuffle(
-        flashcards
-          .filter((item) => item.id !== card.id)
-          .map((item) => item.answer)
-      ).slice(0, 3)
-      const choices = shuffle([card.answer, ...otherAnswers]).slice(0, 4)
-      return { ...card, choices }
-    })
-    setTestItems(items)
-    setTestIndex(0)
-    setTestScore(0)
-    setTestResponses({})
-    setTestActive(true)
-    setIsQuizOpen(true)
-    setQuizTimeLeft(quizSecondsPerQuestion)
-    quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
-  }
-
-  const onSelectTestChoice = (choice: string) => {
-    if (!testActive) return
-    const current = testItems[testIndex]
-    if (!current) return
-    setTestResponses((prev) => ({ ...prev, [current.id]: choice }))
-    if (normalizeAnswer(choice) === normalizeAnswer(current.answer)) {
-      setTestScore((prev) => prev + 1)
-    }
-    const nextIndex = testIndex + 1
-    if (nextIndex >= testItems.length) {
-      setTestActive(false)
-      return
-    }
-    setTestIndex(nextIndex)
-    setQuizTimeLeft(quizSecondsPerQuestion)
-    quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
-  }
-
-  useEffect(() => {
-    if (!isQuizOpen || !testActive) return
-
-    const tick = () => {
-      if (!quizDeadlineRef.current) {
-        quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
-      }
-      const next = Math.max(
-        0,
-        Math.ceil((quizDeadlineRef.current - getNow()) / 1000)
-      )
-      setQuizTimeLeft((prev) => (prev === next ? prev : next))
-
-      if (next === 0) {
-        const timedOutItem = testItemsRef.current[testIndexRef.current]
-        if (timedOutItem) {
-          setTestResponses((prev) =>
-            prev[timedOutItem.id] === undefined
-              ? { ...prev, [timedOutItem.id]: '' }
-              : prev
-          )
-        }
-        setTestIndex((prev) => {
-          const total = testItemsRef.current.length
-          const nextIndex = prev + 1
-          if (nextIndex >= total) {
-            setTestActive(false)
-            return prev
-          }
-          quizDeadlineRef.current = getNow() + quizSecondsPerQuestion * 1000
-          setQuizTimeLeft(quizSecondsPerQuestion)
-          return nextIndex
-        })
-      }
-    }
-
-    tick()
-    const interval = window.setInterval(tick, 500)
-    const onFocus = () => tick()
-    document.addEventListener('visibilitychange', onFocus)
-    window.addEventListener('focus', onFocus)
-
-    return () => {
-      window.clearInterval(interval)
-      document.removeEventListener('visibilitychange', onFocus)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [isQuizOpen, testActive, quizSecondsPerQuestion, testItemsRef])
 
   const onDeleteTopic = async (topicId: string, topicName: string) => {
     try {
@@ -589,145 +401,14 @@ export default function SubjectDetailPage() {
         )}
 
         {viewMode === 'kanban' && (
-          <section className="grid gap-4 xl:grid-cols-4" id="tutorial-kanban">
-            {TOPIC_STATUSES.map((status) => (
-              <div
-                key={status}
-                onDragEnter={(event) => {
-                  event.preventDefault()
-                  if (!draggingTopicId) return
-                  setActiveDropStatus(status)
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  event.dataTransfer.dropEffect = 'move'
-                  if (!draggingTopicId) return
-                  if (activeDropStatus !== status) setActiveDropStatus(status)
-                }}
-                onDrop={async (event) => {
-                  event.preventDefault()
-                  if (!draggingTopicId) return
-                  await moveTopicToStatus(draggingTopicId, status)
-                  clearDragState()
-                }}
-                className={`min-h-[320px] rounded-2xl border bg-white/[0.04] p-3 transition ${
-                  activeDropStatus === status
-                    ? 'border-cyan-300/50 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]'
-                    : 'border-white/10'
-                }`}
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-white">
-                    {TOPIC_STATUS_LABEL[status]}
-                  </h2>
-                  <Badge className="bg-white/10 text-slate-300">
-                    {topicStats.byStatus[status].length}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2">
-                  {topicStats.byStatus[status].map((topic) => {
-                    const relative = topicStats.strongest?.totalTime
-                      ? Math.max(
-                          8,
-                          Math.round(
-                            (topic.totalTime / topicStats.strongest.totalTime) *
-                              100
-                          )
-                        )
-                      : 8
-
-                    return (
-                      <div
-                        key={topic.id}
-                        draggable
-                        onDragStart={(event) => onDragStartTopic(event, topic)}
-                        onDrag={onDragTopic}
-                        onDragEnd={clearDragState}
-                        className={`rounded-xl border border-white/10 bg-[#0d1627]/80 p-3 transition ${
-                          draggingTopicId === topic.id
-                            ? 'opacity-20'
-                            : 'opacity-100'
-                        }`}
-                      >
-                        <div className="mb-1.5 flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold text-white">
-                            {topic.name}
-                          </p>
-                          <div className="flex items-center gap-1">
-                            <GripVertical className="h-4 w-4 text-slate-500" />
-                            <Button
-                              variant="outline"
-                              className="h-7 border-red-400/35 bg-red-500/10 px-2 text-red-200 hover:bg-red-500/20"
-                              onClick={() =>
-                                setDeleteTopicState({
-                                  id: topic.id,
-                                  name: topic.name,
-                                })
-                              }
-                              disabled={deleteTopic.isPending}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
-                          <span>{formatDuration(topic.totalTime)}</span>
-                          <span>{topic._count.sessions} sessions</span>
-                        </div>
-                        <Progress
-                          value={relative}
-                          className="h-2 bg-white/10"
-                        />
-
-                        <div className="mt-2 flex items-center gap-1">
-                          {status !== 'IN_PROGRESS' && (
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              className="h-6 bg-white/6 text-[11px] text-slate-300 hover:bg-white/12"
-                              onClick={() => onStartPomodoro(topic.id, status)}
-                            >
-                              Start timer
-                            </Button>
-                          )}
-                          {status === 'IN_PROGRESS' && (
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              className="h-6 bg-cyan-500/15 text-[11px] text-cyan-200 hover:bg-cyan-500/25"
-                              onClick={() => onStartPomodoro(topic.id, status)}
-                            >
-                              Open timer
-                            </Button>
-                          )}
-                          {status !== 'DONE' && (
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              className="h-6 bg-emerald-500/12 text-[11px] text-emerald-200 hover:bg-emerald-500/20"
-                              onClick={() =>
-                                moveTopicToStatus(topic.id, 'DONE')
-                              }
-                            >
-                              Done
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {topicStats.byStatus[status].length === 0 && (
-                    <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3 py-6 text-center text-xs text-slate-500">
-                      Drop topics here
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </section>
+          <TopicBoard
+            byStatus={topicStats.byStatus}
+            strongest={topicStats.strongest}
+            moveTopicToStatus={moveTopicToStatus}
+            onStartPomodoro={onStartPomodoro}
+            onRequestDeleteTopic={setDeleteTopicState}
+            deleteTopicPending={deleteTopic.isPending}
+          />
         )}
 
         {viewMode === 'flashcards' && (
@@ -1074,260 +755,32 @@ export default function SubjectDetailPage() {
               </div>
 
               {isStudyOpen && (
-                <div className="rounded-2xl border border-white/10 bg-[#0d1627]/80 p-6">
-                  {!flashcards.length ? (
-                    <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center text-sm text-slate-400">
-                      No flashcards available for this topic yet.
-                    </div>
-                  ) : (
-                    <div className="space-y-5">
-                      <div className="flex items-center justify-between">
-                        <Badge className="bg-white/10 text-slate-300">
-                          {studyIndex + 1} / {flashcards.length}
-                        </Badge>
-                        <Badge className="bg-violet-500/20 text-violet-100">
-                          {activeStudyCard?.status ?? 'NEW'}
-                        </Badge>
-                      </div>
-                      <Progress
-                        value={Math.max(
-                          1,
-                          ((studyIndex + 1) / flashcards.length) * 100
-                        )}
-                        className="h-2 bg-white/10"
-                      />
-
-                      <div className="rounded-2xl border border-white/10 bg-[#121b30]/85 p-8">
-                        <p className="text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">
-                          Term
-                        </p>
-                        <p className="mt-4 text-3xl font-semibold text-white">
-                          {activeStudyCard?.question ?? 'No card selected'}
-                        </p>
-
-                        {showAnswer && (
-                          <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-5">
-                            <p className="text-xs text-slate-400">Definition</p>
-                            <p className="mt-2 text-base text-slate-100">
-                              {activeStudyCard?.answer}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          variant="outline"
-                          className="h-9 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                          onClick={() => setShowAnswer((prev) => !prev)}
-                          disabled={!activeStudyCard}
-                        >
-                          {showAnswer ? 'Hide answer' : 'Show answer'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-9 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                          onClick={() => {
-                            setStudyIndex((prev) =>
-                              Math.min(
-                                prev + 1,
-                                Math.max(0, flashcards.length - 1)
-                              )
-                            )
-                            setShowAnswer(false)
-                          }}
-                          disabled={!activeStudyCard}
-                        >
-                          Next
-                        </Button>
-                        {showAnswer && activeStudyCard && (
-                          <>
-                            <Button
-                              size="sm"
-                              className="bg-rose-500/80 text-white hover:bg-rose-500"
-                              onClick={() =>
-                                onReviewFlashcard(activeStudyCard.id, 'REVIEW')
-                              }
-                            >
-                              Again
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="bg-cyan-500/80 text-white hover:bg-cyan-500"
-                              onClick={() =>
-                                onReviewFlashcard(
-                                  activeStudyCard.id,
-                                  'LEARNING'
-                                )
-                              }
-                            >
-                              Good
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="bg-emerald-500/80 text-white hover:bg-emerald-500"
-                              onClick={() =>
-                                onReviewFlashcard(
-                                  activeStudyCard.id,
-                                  'MASTERED'
-                                )
-                              }
-                            >
-                              Easy
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <FlashcardStudyModal
+                  flashcards={flashcards}
+                  studyIndex={studyIndex}
+                  setStudyIndex={setStudyIndex}
+                  activeStudyCard={activeStudyCard}
+                  showAnswer={showAnswer}
+                  setShowAnswer={setShowAnswer}
+                  onReviewFlashcard={onReviewFlashcard}
+                />
               )}
 
               {isQuizOpen && (
-                <div className="rounded-2xl border border-white/10 bg-[#0d1627]/80 p-6">
-                  {flashcards.length < 2 ? (
-                    <p className="text-sm text-slate-400">
-                      Add at least two cards to start a quiz.
-                    </p>
-                  ) : testActive ? (
-                    <div className="space-y-5">
-                      <div className="flex items-center justify-between">
-                        <Badge className="bg-white/10 text-slate-300">
-                          {testIndex + 1} / {testItems.length}
-                        </Badge>
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-slate-700/40 text-slate-200">
-                            {quizTimeLeft}s
-                          </Badge>
-                          <Badge className="bg-emerald-500/15 text-emerald-200">
-                            Score {testScore}
-                          </Badge>
-                        </div>
-                      </div>
-                      <Progress
-                        value={Math.max(
-                          1,
-                          ((testIndex + 1) / testItems.length) * 100
-                        )}
-                        className="h-2 bg-white/10"
-                      />
-
-                      <div className="rounded-2xl border border-white/10 bg-[#121b30]/85 p-8">
-                        <p className="text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">
-                          Term
-                        </p>
-                        <p className="mt-4 text-2xl font-semibold text-white">
-                          {testItems[testIndex]?.question}
-                        </p>
-                        <p className="mt-6 text-xs tracking-[0.18em] text-slate-400 uppercase">
-                          Choose an answer
-                        </p>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          {(testItems[testIndex]?.choices ?? []).map(
-                            (choice, idx) => (
-                              <button
-                                key={`${choice}-${idx}`}
-                                onClick={() => onSelectTestChoice(choice)}
-                                className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/10"
-                              >
-                                <span className="mr-2 text-xs text-slate-400">
-                                  {idx + 1}
-                                </span>
-                                {choice}
-                              </button>
-                            )
-                          )}
-                        </div>
-                        <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
-                          <span>Not sure?</span>
-                          <button
-                            className="text-cyan-300 hover:text-cyan-200"
-                            onClick={() => onSelectTestChoice('')}
-                          >
-                            Skip
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                          onClick={() => setTestActive(false)}
-                        >
-                          End test
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                      <p className="text-sm text-slate-300">
-                        Last score: {testScore}/{testItems.length}
-                      </p>
-                      <div className="mt-4 space-y-2">
-                        {testItems.map((item, index) => {
-                          const selected = testResponses[item.id] ?? ''
-                          const isCorrect =
-                            selected !== '' &&
-                            normalizeAnswer(selected) ===
-                              normalizeAnswer(item.answer)
-                          return (
-                            <div
-                              key={item.id}
-                              className={`rounded-lg border px-3 py-2 ${
-                                isCorrect
-                                  ? 'border-white/10 bg-white/[0.02]'
-                                  : 'border-rose-500/40 bg-rose-500/5'
-                              }`}
-                            >
-                              <p className="text-xs text-slate-400">
-                                {index + 1}. {item.question}
-                              </p>
-                              <p
-                                className={`mt-2 text-sm font-semibold ${
-                                  isCorrect
-                                    ? 'text-emerald-200'
-                                    : 'text-rose-300'
-                                }`}
-                              >
-                                {isCorrect ? 'Correct' : 'Incorrect'}
-                              </p>
-                              <p
-                                className={`mt-1 text-xs ${
-                                  isCorrect
-                                    ? 'text-slate-300'
-                                    : 'text-rose-200'
-                                }`}
-                              >
-                                Your answer: {selected ? selected : 'No answer'}
-                              </p>
-                              {!isCorrect && (
-                                <p className="mt-1 text-xs text-emerald-200">
-                                  Correct answer: {item.answer}
-                                </p>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <Button
-                          onClick={() => onStartTest(5)}
-                          className="bg-cyan-600 text-white hover:bg-cyan-500"
-                        >
-                          Restart quick test
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                          onClick={() => setIsQuizOpen(false)}
-                        >
-                          Close
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <FlashcardQuizModal
+                  flashcards={flashcards}
+                  testActive={testActive}
+                  setTestActive={setTestActive}
+                  testItems={testItems}
+                  testIndex={testIndex}
+                  testScore={testScore}
+                  testResponses={testResponses}
+                  quizTimeLeft={quizTimeLeft}
+                  normalizeAnswer={normalizeAnswer}
+                  onSelectTestChoice={onSelectTestChoice}
+                  onStartTest={onStartTest}
+                  setIsQuizOpen={setIsQuizOpen}
+                />
               )}
             </div>
           </div>
@@ -1380,28 +833,6 @@ export default function SubjectDetailPage() {
           </Card>
         </Link>
       </div>
-
-      {dragPreview && (
-        <div
-          className="pointer-events-none fixed z-[120] w-[min(320px,calc(100vw-2rem))] rounded-xl border border-cyan-300/45 bg-[#0d1627]/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
-          style={{
-            left: dragPreview.x + 16,
-            top: dragPreview.y + 16,
-            transform: 'translateZ(0)',
-          }}
-        >
-          <div className="mb-1.5 flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-white">
-              {dragPreview.name}
-            </p>
-            <GripVertical className="h-4 w-4 text-cyan-200/90" />
-          </div>
-          <div className="text-xs text-slate-300">
-            {formatDuration(dragPreview.totalTime)} · {dragPreview.sessions}{' '}
-            sessions
-          </div>
-        </div>
-      )}
 
       <ConfirmActionDialog
         open={!!deleteTopicState}
@@ -1475,16 +906,5 @@ export default function SubjectDetailPage() {
         pending={deleteDeck.isPending}
       />
     </div>
-  )
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
-      <CardContent className="px-4 py-4 sm:px-5">
-        <p className="text-xs text-slate-400">{label}</p>
-        <p className="mt-1 text-2xl font-extrabold text-white">{value}</p>
-      </CardContent>
-    </Card>
   )
 }

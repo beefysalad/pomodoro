@@ -3,15 +3,7 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
-import {
-  ArrowLeft,
-  BookOpen,
-  Edit2,
-  MoreVertical,
-  Plus,
-  Search,
-  Trash2,
-} from 'lucide-react'
+import { ArrowLeft, BookOpen, Plus, Search } from 'lucide-react'
 import {
   useCreateFlashcardDeck,
   useDeleteFlashcardDeck,
@@ -21,26 +13,13 @@ import {
 import { useSubjectTopics } from '@/hooks/use-topics'
 import { AppHeader } from '@/components/app-header'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog'
+import { DeckCard } from '@/components/subjects-decks/deck-card'
+import { CreateDeckDialog } from '@/components/subjects-decks/create-deck-dialog'
+import { RenameDeckDialog } from '@/components/subjects-decks/rename-deck-dialog'
 
 export default function SubjectDecksPage() {
   const params = useParams<{ id: string }>()
@@ -162,70 +141,13 @@ export default function SubjectDecksPage() {
                   />
                 ))
               : filteredDecks.map((deck) => (
-                  <div key={deck.id} className="group relative">
-                    <Link
-                      href={`/subjects/${subjectId}?view=flashcards&deckId=${deck.id}`}
-                    >
-                      <Card className="relative h-full overflow-hidden border-white/10 bg-white/[0.05] transition-all hover:border-cyan-500/40 hover:bg-white/[0.08] hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]">
-                        <CardContent className="p-5">
-                          <div className="flex items-start justify-between">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400 ring-1 ring-violet-500/30">
-                              <BookOpen className="h-5 w-5" />
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className="border-white/10 text-[10px] tracking-wider text-slate-500 uppercase"
-                            >
-                              Deck
-                            </Badge>
-                          </div>
-                          <h3 className="mt-4 font-bold text-white transition-colors group-hover:text-cyan-300">
-                            {deck.name}
-                          </h3>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Last studied:{' '}
-                            {new Date(deck.updatedAt).toLocaleDateString()}
-                          </p>
-                        </CardContent>
-                        <div className="absolute bottom-0 left-0 h-1 w-0 bg-gradient-to-r from-violet-500 to-cyan-400 transition-all group-hover:w-full" />
-                      </Card>
-                    </Link>
-
-                    <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-white/10 hover:text-white"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-40 border-white/10 bg-[#0f172a] text-slate-200"
-                        >
-                          <DropdownMenuItem
-                            onClick={() =>
-                              setEditingDeck({ id: deck.id, name: deck.name })
-                            }
-                            className="focus:bg-white/10 focus:text-white"
-                          >
-                            <Edit2 className="mr-2 h-4 w-4" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setDeletingDeckId(deck.id)}
-                            className="text-red-400 focus:bg-red-400/10 focus:text-red-400"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
+                  <DeckCard
+                    key={deck.id}
+                    deck={deck}
+                    subjectId={subjectId}
+                    onRequestRename={setEditingDeck}
+                    onRequestDelete={setDeletingDeckId}
+                  />
                 ))}
           </div>
 
@@ -257,85 +179,22 @@ export default function SubjectDecksPage() {
       </div>
 
       {/* Dialogs */}
-      <Dialog open={isAddDeckOpen} onOpenChange={setIsAddDeckOpen}>
-        <DialogContent className="border-white/10 bg-[#0f172a] text-slate-200">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white">
-              New Flashcard Deck
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Create a new set of cards for this subject.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={newDeckName}
-              onChange={(e) => setNewDeckName(e.target.value)}
-              placeholder="e.g. Chapter 1: Introduction"
-              className="border-white/10 bg-white/5 text-white"
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateDeck()}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setIsAddDeckOpen(false)}
-              className="text-slate-400 hover:bg-white/5 hover:text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateDeck}
-              className="bg-violet-600 text-white hover:bg-violet-500"
-            >
-              Create Deck
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateDeckDialog
+        open={isAddDeckOpen}
+        onOpenChange={setIsAddDeckOpen}
+        name={newDeckName}
+        onNameChange={setNewDeckName}
+        onCreate={handleCreateDeck}
+      />
 
-      <Dialog
-        open={!!editingDeck}
-        onOpenChange={(open) => !open && setEditingDeck(null)}
-      >
-        <DialogContent className="border-white/10 bg-[#0f172a] text-slate-200">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white">
-              Rename Deck
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Enter a new name for this card deck.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={editingDeck?.name ?? ''}
-              onChange={(e) =>
-                setEditingDeck((prev) =>
-                  prev ? { ...prev, name: e.target.value } : null
-                )
-              }
-              className="border-white/10 bg-white/5 text-white"
-              onKeyDown={(e) => e.key === 'Enter' && handleUpdateDeck()}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setEditingDeck(null)}
-              className="text-slate-400 hover:bg-white/5 hover:text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateDeck}
-              className="bg-cyan-600 text-white hover:bg-cyan-500"
-            >
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RenameDeckDialog
+        editingDeck={editingDeck}
+        onClose={() => setEditingDeck(null)}
+        onNameChange={(name) =>
+          setEditingDeck((prev) => (prev ? { ...prev, name } : null))
+        }
+        onSave={handleUpdateDeck}
+      />
 
       <ConfirmActionDialog
         open={!!deletingDeckId}

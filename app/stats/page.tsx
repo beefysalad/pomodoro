@@ -30,22 +30,14 @@ import { AppHeader } from '@/components/app-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { InsightCard } from '@/components/stats/insight-card'
+import { SnapshotRow } from '@/components/stats/snapshot-row'
+import { StatCard } from '@/components/stats/stat-card'
 import { getTopics } from '@/lib/api/topics'
+import { formatDuration, formatPercent } from '@/lib/format'
 import { getLevelFromXp, getLevelProgress } from '@/lib/progression'
 import { useSubjects } from '@/hooks/use-subjects'
 import { useUser } from '@/hooks/use-user'
-
-function formatDuration(totalSeconds: number) {
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  if (totalMinutes < 60) return `${totalMinutes}m`
-  const hours = Math.floor(totalMinutes / 60)
-  const mins = totalMinutes % 60
-  return `${hours}h ${mins}m`
-}
-
-function formatPercent(value: number) {
-  return `${Math.round(value)}%`
-}
 
 const CHART_COLORS = [
   '#7c3aed',
@@ -702,84 +694,5 @@ export default function StatsPage() {
         </section>
       </div>
     </div>
-  )
-}
-
-function StatCard({
-  id,
-  icon: Icon,
-  label,
-  value,
-}: {
-  id?: string
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  value: string
-}) {
-  return (
-    <Card
-      id={id}
-      className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
-    >
-      <CardContent className="flex items-center justify-between px-4 py-4 sm:px-5">
-        <div>
-          <p className="text-xs text-slate-400">{label}</p>
-          <p className="mt-1 text-2xl font-extrabold text-white">{value}</p>
-        </div>
-        <div className="rounded-xl border border-white/15 bg-white/5 p-2.5">
-          <Icon className="h-4 w-4 text-slate-100" />
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function SnapshotRow({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: string
-  icon: React.ComponentType<{ className?: string }>
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
-      <span className="inline-flex items-center gap-2 text-sm text-slate-300">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </span>
-      <span className="text-sm font-semibold text-white">{value}</span>
-    </div>
-  )
-}
-
-function InsightCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  accent,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  value: string
-  hint: string
-  accent: string
-}) {
-  return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
-      <CardContent className="relative overflow-hidden px-4 py-4 sm:px-5">
-        <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent}`} />
-        <div className="relative">
-          <p className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-            <Icon className="h-3.5 w-3.5 text-slate-200" />
-            {label}
-          </p>
-          <p className="mt-1 text-2xl font-extrabold text-white">{value}</p>
-          <p className="mt-1 text-xs text-slate-300">{hint}</p>
-        </div>
-      </CardContent>
-    </Card>
   )
 }

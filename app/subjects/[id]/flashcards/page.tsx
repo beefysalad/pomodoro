@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { useMemo, useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus } from 'lucide-react'
 import { AppHeader } from '@/components/app-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,14 +13,10 @@ import {
   useCreateFlashcardDeck,
   useFlashcardDecks,
 } from '@/hooks/use-flashcard-decks'
-
-type DraftCard = {
-  id: string
-  question: string
-  answer: string
-  hint: string
-  choicesText: string
-}
+import { DeckChoiceStep } from '@/components/subjects-flashcards/deck-choice-step'
+import { BulkImportCard } from '@/components/subjects-flashcards/bulk-import-card'
+import { DraftCardEditor } from '@/components/subjects-flashcards/draft-card-editor'
+import type { DraftCard } from '@/components/subjects-flashcards/draft-card'
 
 export default function FlashcardCreatePage() {
   const router = useRouter()
@@ -181,100 +176,18 @@ export default function FlashcardCreatePage() {
         <AppHeader />
 
         {step === 'choice' ? (
-          <div className="flex flex-col gap-8 py-10">
-            <div className="text-center">
-              <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
-                Ready to study?
-              </h1>
-              <p className="mt-4 text-lg text-slate-400">
-                Choose a deck to add cards to, or create a fresh one to get
-                started.
-              </p>
-            </div>
-
-            <div className="mx-auto grid w-full max-w-4xl gap-6 sm:grid-cols-2">
-              {/* Option 1: Existing Deck */}
-              <Card className="flex flex-col border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl transition hover:border-violet-500/50 hover:bg-white/[0.08]">
-                <div className="mb-6">
-                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-600/20 text-violet-400">
-                    <Plus className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">
-                    Use existing deck
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Add new cards to one of your existing decks in this subject.
-                  </p>
-                </div>
-                <div className="mt-auto space-y-4">
-                  <select
-                    value={deckId}
-                    onChange={(event) => setDeckId(event.target.value)}
-                    className="h-11 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                  >
-                    <option value="" disabled className="bg-slate-900">
-                      Select a deck
-                    </option>
-                    {decks.map((deck) => (
-                      <option
-                        key={deck.id}
-                        value={deck.id}
-                        className="bg-slate-900"
-                      >
-                        {deck.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    onClick={handleNextStep}
-                    disabled={!resolvedDeckId}
-                    className="w-full bg-violet-600 font-bold hover:bg-violet-500"
-                  >
-                    Continue
-                  </Button>
-                </div>
-              </Card>
-
-              {/* Option 2: New Deck */}
-              <Card className="flex flex-col border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl transition hover:border-cyan-500/50 hover:bg-white/[0.08]">
-                <div className="mb-6">
-                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-600/20 text-cyan-400">
-                    <Plus className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">
-                    Create new deck
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Start a completely new collection of cards.
-                  </p>
-                </div>
-                <div className="mt-auto space-y-4">
-                  <Input
-                    value={deckName}
-                    onChange={(event) => setDeckName(event.target.value)}
-                    placeholder="E.g., Midterm Review"
-                    className="h-11 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:ring-cyan-500"
-                  />
-                  <Button
-                    onClick={onCreateDeck}
-                    disabled={!deckName.trim() || createDeck.isPending}
-                    className="w-full bg-cyan-600 font-bold hover:bg-cyan-500"
-                  >
-                    Create & Continue
-                  </Button>
-                </div>
-              </Card>
-            </div>
-
-            <div className="text-center">
-              <Link
-                href={`/subjects/${subjectId}`}
-                className="text-sm font-medium text-slate-400 hover:text-white"
-              >
-                Nevermind, go back
-              </Link>
-            </div>
-          </div>
+          <DeckChoiceStep
+            subjectId={subjectId}
+            decks={decks}
+            deckId={deckId}
+            onDeckIdChange={setDeckId}
+            resolvedDeckId={resolvedDeckId}
+            onContinue={handleNextStep}
+            deckName={deckName}
+            onDeckNameChange={setDeckName}
+            onCreateDeck={onCreateDeck}
+            isCreatingDeck={createDeck.isPending}
+          />
         ) : (
           <>
             <section className="flex flex-wrap items-center justify-between gap-4">
@@ -328,131 +241,23 @@ export default function FlashcardCreatePage() {
             </Card>
 
             <div className="space-y-4">
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
-                <CardContent className="space-y-3 px-4 py-5 sm:px-6">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">
-                        Optional
-                      </p>
-                      <h3 className="text-base font-bold text-white">
-                        Bulk import (paste Q/A)
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        If you already have cards, paste them here. Otherwise,
-                        skip and add manually below.
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                      onClick={() => setImportOpen((open) => !open)}
-                    >
-                      {importOpen ? 'Hide' : 'Show'} import
-                    </Button>
-                  </div>
-
-                  {importOpen && (
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-slate-500">
-                        Format:{' '}
-                        <span className="text-slate-300">
-                          Term | Answer | choice1 | choice2 | choice3
-                        </span>
-                      </p>
-                      <textarea
-                        value={importText}
-                        onChange={(event) => setImportText(event.target.value)}
-                        placeholder="What is 1 + 1? | 2 | 1 | 3 | 4"
-                        className="min-h-[120px] w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
-                      />
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
-                          Tip: paste many lines. Each line becomes one card.
-                        </div>
-                        <Button
-                          variant="outline"
-                          className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                          onClick={importFromText}
-                          disabled={!importText.trim()}
-                        >
-                          Import now
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <BulkImportCard
+                importOpen={importOpen}
+                onToggleImportOpen={() => setImportOpen((open) => !open)}
+                importText={importText}
+                onImportTextChange={setImportText}
+                onImportFromText={importFromText}
+              />
 
               {drafts.map((card, index) => (
-                <Card
+                <DraftCardEditor
                   key={card.id}
-                  className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
-                >
-                  <CardContent className="space-y-3 px-4 py-5 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-slate-400">
-                        {index + 1}
-                      </p>
-                      <Button
-                        variant="outline"
-                        className="h-7 border-red-400/35 bg-red-500/10 px-2 text-red-200 hover:bg-red-500/20"
-                        onClick={() => removeDraft(card.id)}
-                        disabled={drafts.length === 1}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <p className="text-[10px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
-                          Question
-                        </p>
-                        <Input
-                          value={card.question}
-                          onChange={(event) =>
-                            updateDraft(card.id, {
-                              question: event.target.value,
-                            })
-                          }
-                          placeholder="Enter question (What is 1+1)"
-                          className="mt-2 border-white/15 bg-white/5 text-white placeholder:text-slate-500"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
-                          Answer
-                        </p>
-                        <Input
-                          value={card.answer}
-                          onChange={(event) =>
-                            updateDraft(card.id, { answer: event.target.value })
-                          }
-                          placeholder="Enter answer (2) "
-                          className="mt-2 border-white/15 bg-white/5 text-white placeholder:text-slate-500"
-                        />
-                      </div>
-                    </div>
-                    <Input
-                      value={card.hint}
-                      onChange={(event) =>
-                        updateDraft(card.id, { hint: event.target.value })
-                      }
-                      placeholder="Hint (optional)"
-                      className="border-white/15 bg-white/5 text-white placeholder:text-slate-500"
-                    />
-                    <textarea
-                      value={card.choicesText}
-                      onChange={(event) =>
-                        updateDraft(card.id, {
-                          choicesText: event.target.value,
-                        })
-                      }
-                      placeholder="Multiple choices (optional, one per line)"
-                      className="min-h-[96px] w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
-                    />
-                  </CardContent>
-                </Card>
+                  card={card}
+                  index={index}
+                  onUpdate={updateDraft}
+                  onRemove={removeDraft}
+                  canRemove={drafts.length > 1}
+                />
               ))}
             </div>
 
