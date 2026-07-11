@@ -56,3 +56,7 @@ Pages under `app/` stay thin and compose hooks + components; business logic live
 The UI is dark-mode-only with a strict violet/streak-orange palette and `Geist Mono` as the only font. Full rules (color tokens, typography scale, glow-not-shadow conventions, spacing) are documented in `docs/DESIGN-SYSTEM.md` — read it before writing or reviewing UI code. Don't use default Tailwind shadows or non-mono fonts; use the semantic color classes (e.g. `text-violet-mid`) defined in `app/globals.css` rather than raw hex values.
 
 `docs/agents.md` is a stale leftover from the original Next.js/Prisma boilerplate template (describes NextAuth-based login flow, references a `FEATURES.md` that doesn't exist in this repo) — prefer this CLAUDE.md over it.
+
+## Git commits & pull requests
+
+Do not add any Claude/Anthropic attribution to commits or PRs — no `Co-Authored-By: Claude` trailer, no "Generated with Claude Code" line, and no mention of Claude in the PR body or commit message. Commits and PRs should read as if written solely by the human author.
