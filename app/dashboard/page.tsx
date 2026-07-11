@@ -2,20 +2,14 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import {
-  CheckCircle2,
-  Flame,
-  Maximize2,
-  Minimize2,
-  Pause,
-  Play,
-  RotateCcw,
-  Timer,
-  Zap,
-} from 'lucide-react'
+import { Flame, Maximize2, Timer } from 'lucide-react'
 import { AppHeader } from '@/components/app-header'
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog'
+import { FocusModeOverlay } from '@/components/dashboard/focus-mode-overlay'
+import { ModeSelector } from '@/components/dashboard/mode-selector'
+import { PomodoroRing } from '@/components/dashboard/pomodoro-ring'
+import { SessionRatingPanel } from '@/components/dashboard/session-rating-panel'
+import { TimerControls } from '@/components/dashboard/timer-controls'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -82,16 +76,6 @@ const DEV_TIMER_MINUTES = {
   shortBreak: 0.1,
   longBreak: 0.2,
 } as const
-
-function pad(value: number) {
-  return String(value).padStart(2, '0')
-}
-
-function formatClock(seconds: number) {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${pad(mins)}:${pad(secs)}`
-}
 
 export default function DashboardPage() {
   const [devTimerFlag] = useState(() =>
@@ -392,43 +376,12 @@ export default function DashboardPage() {
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <div
-                className="flex flex-wrap items-center gap-2"
-                id="tutorial-modes"
-              >
-                {(Object.keys(modeConfig) as Mode[]).map((entryMode) => {
-                  const option = modeConfig[entryMode]
-                  const active = mode === entryMode
-
-                  return (
-                    <button
-                      key={entryMode}
-                      onClick={() => onChangeMode(entryMode)}
-                      className="rounded-xl border px-3 py-2 text-left transition-all"
-                      style={
-                        active
-                          ? {
-                              borderColor: `${option.color}70`,
-                              background: `${option.color}22`,
-                              boxShadow: `0 0 20px ${option.color}30`,
-                            }
-                          : {
-                              borderColor: 'rgba(255,255,255,0.14)',
-                              background: 'rgba(255,255,255,0.03)',
-                            }
-                      }
-                      disabled={running || pendingReview}
-                    >
-                      <p className="text-sm leading-tight font-semibold text-white">
-                        {option.label}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        {option.subtitle(option.minutes)}
-                      </p>
-                    </button>
-                  )
-                })}
-              </div>
+              <ModeSelector
+                modeConfig={modeConfig}
+                mode={mode}
+                disabled={running || pendingReview}
+                onChangeMode={onChangeMode}
+              />
 
               <div className="flex items-center gap-2">
                 <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1 sm:flex">
@@ -589,93 +542,29 @@ export default function DashboardPage() {
               </div>
 
               {!pendingReview ? (
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    variant="outline"
-                    className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                    onClick={onResetTimer}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Reset
-                  </Button>
-
-                  {phase === 'break' && (
-                    <Button
-                      variant="outline"
-                      className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                      onClick={onSkipBreak}
-                    >
-                      Skip break
-                    </Button>
-                  )}
-
-                  <Button
-                    className="h-11 font-bold text-white"
-                    onClick={onPlayPause}
-                    disabled={
-                      completeSession.isPending ||
-                      (phase === 'focus' && !resolvedTopicId)
-                    }
-                    style={{
-                      backgroundColor:
-                        phase === 'focus' ? activeMode.color : '#22c55e',
-                      boxShadow: `0 0 28px ${phase === 'focus' ? activeMode.color : '#22c55e'}58`,
-                    }}
-                  >
-                    {running ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Play className="h-4 w-4" />
-                    )}
-                    {running
-                      ? 'Pause'
-                      : finished
-                        ? 'Done'
-                        : timerRemaining === totalSeconds
-                          ? phase === 'focus'
-                            ? 'Start session'
-                            : 'Start break'
-                          : 'Resume'}
-                  </Button>
-                </div>
+                <TimerControls
+                  variant="inline"
+                  phase={phase}
+                  running={running}
+                  finished={finished}
+                  timerRemaining={timerRemaining}
+                  totalSeconds={totalSeconds}
+                  activeColor={activeMode.color}
+                  isSessionPending={completeSession.isPending}
+                  hasResolvedTopic={!!resolvedTopicId}
+                  onResetTimer={onResetTimer}
+                  onSkipBreak={onSkipBreak}
+                  onPlayPause={onPlayPause}
+                />
               ) : (
-                <div className="w-full max-w-xl rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-center text-sm font-semibold text-white">
-                    How was that session?
-                  </p>
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    {[1, 2, 3].map((score) => (
-                      <button
-                        key={score}
-                        onClick={() => setRating(score)}
-                        className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
-                          rating === score
-                            ? 'border-violet-400/70 bg-violet-500/20 text-violet-100'
-                            : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                        }`}
-                      >
-                        {score === 1 ? 'Hard' : score === 2 ? 'Okay' : 'Great'}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex flex-wrap justify-center gap-2">
-                    <Button
-                      onClick={onSaveSession}
-                      disabled={completeSession.isPending}
-                      className="bg-violet-600 text-white hover:bg-violet-500"
-                    >
-                      <Zap className="h-4 w-4" />
-                      Save session
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={onResetTimer}
-                      className="border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                    >
-                      Discard
-                    </Button>
-                  </div>
-                </div>
+                <SessionRatingPanel
+                  variant="inline"
+                  rating={rating}
+                  onRatingChange={setRating}
+                  onSaveSession={onSaveSession}
+                  onDiscard={onResetTimer}
+                  isSaving={completeSession.isPending}
+                />
               )}
             </div>
           </section>
@@ -695,155 +584,29 @@ export default function DashboardPage() {
           </section>
         </div>
 
-        <AnimatePresence>
-          {(isFocusMode || forceCompletionFocus) && (
-            <motion.div
-              className="fixed inset-0 z-50 bg-[#040812]/86 backdrop-blur-2xl"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute inset-0 bg-[#030712]/55" />
-                <div className="absolute top-[-140px] left-1/2 h-[440px] w-[440px] -translate-x-1/2 rounded-full bg-violet-600/16 blur-[130px]" />
-                <div className="absolute right-[-120px] bottom-[-160px] h-[420px] w-[420px] rounded-full bg-cyan-500/12 blur-[130px]" />
-              </div>
-
-              <div className="relative z-10 flex h-full flex-col px-4 py-6 sm:px-6 lg:px-10">
-                <div className="mb-8 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">
-                      Focus mode
-                    </p>
-                    <p className="mt-1 text-sm text-slate-300">
-                      {phase === 'focus' ? activeMode.label : 'Break'} ·{' '}
-                      {running ? 'In progress' : 'Ready'}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
-                    onClick={() => setIsFocusMode(false)}
-                    disabled={forceCompletionFocus}
-                  >
-                    <Minimize2 className="h-4 w-4" />
-                    {forceCompletionFocus ? 'Complete action first' : 'Exit'}
-                  </Button>
-                </div>
-
-                <div className="flex flex-1 flex-col items-center justify-center gap-8">
-                  <PomodoroRing
-                    color={phase === 'focus' ? activeMode.color : '#22c55e'}
-                    finished={finished}
-                    progress={progress}
-                    remaining={timerRemaining}
-                    large
-                  />
-
-                  {!!quote && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
-                      className="max-w-2xl rounded-2xl border border-white/10 bg-gradient-to-r from-white/8 via-white/4 to-transparent px-5 py-4 text-center text-sm text-slate-200 shadow-[0_0_30px_rgba(15,23,42,0.35)]"
-                    >
-                      <p className="text-[11px] font-semibold tracking-[0.18em] text-cyan-300 uppercase">
-                        Focus mantra
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        &ldquo;{quote.text}&rdquo;
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        — {quote.author}
-                      </p>
-                    </motion.div>
-                  )}
-
-                  {!pendingReview ? (
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                      <Button
-                        variant="outline"
-                        className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                        onClick={onResetTimer}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        Reset
-                      </Button>
-                      {phase === 'break' && (
-                        <Button
-                          variant="outline"
-                          className="h-11 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                          onClick={onSkipBreak}
-                        >
-                          Skip break
-                        </Button>
-                      )}
-                      <Button
-                        className="h-11 font-bold text-white"
-                        onClick={onPlayPause}
-                        disabled={
-                          completeSession.isPending ||
-                          (phase === 'focus' && !resolvedTopicId)
-                        }
-                        style={{
-                          backgroundColor:
-                            phase === 'focus' ? activeMode.color : '#22c55e',
-                          boxShadow: `0 0 30px ${phase === 'focus' ? activeMode.color : '#22c55e'}5f`,
-                        }}
-                      >
-                        {running ? (
-                          <Pause className="h-4 w-4" />
-                        ) : (
-                          <Play className="h-4 w-4" />
-                        )}
-                        {running
-                          ? 'Pause'
-                          : timerRemaining === totalSeconds
-                            ? 'Start'
-                            : 'Resume'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="w-full max-w-xl rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                      <p className="text-center text-sm font-semibold text-white">
-                        How was that session?
-                      </p>
-                      <div className="mt-3 grid grid-cols-3 gap-2">
-                        {[1, 2, 3].map((score) => (
-                          <button
-                            key={score}
-                            onClick={() => setRating(score)}
-                            className={`rounded-lg border px-2 py-2 text-sm font-semibold transition ${
-                              rating === score
-                                ? 'border-violet-400/70 bg-violet-500/20 text-violet-100'
-                                : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
-                            }`}
-                          >
-                            {score === 1
-                              ? 'Hard'
-                              : score === 2
-                                ? 'Okay'
-                                : 'Great'}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="mt-3 flex justify-center gap-2">
-                        <Button
-                          onClick={onSaveSession}
-                          disabled={completeSession.isPending}
-                          className="bg-violet-600 text-white hover:bg-violet-500"
-                        >
-                          <Zap className="h-4 w-4" />
-                          Save session
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <FocusModeOverlay
+          isOpen={isFocusMode || forceCompletionFocus}
+          forceCompletionFocus={forceCompletionFocus}
+          onClose={() => setIsFocusMode(false)}
+          phase={phase}
+          activeModeLabel={activeMode.label}
+          activeModeColor={activeMode.color}
+          running={running}
+          quote={quote}
+          finished={finished}
+          progress={progress}
+          timerRemaining={timerRemaining}
+          totalSeconds={totalSeconds}
+          pendingReview={pendingReview}
+          rating={rating}
+          onRatingChange={setRating}
+          isSessionPending={completeSession.isPending}
+          hasResolvedTopic={!!resolvedTopicId}
+          onResetTimer={onResetTimer}
+          onSkipBreak={onSkipBreak}
+          onPlayPause={onPlayPause}
+          onSaveSession={onSaveSession}
+        />
       </div>
 
       <ConfirmActionDialog
@@ -857,121 +620,5 @@ export default function DashboardPage() {
         onConfirm={onMoveTopicDone}
       />
     </>
-  )
-}
-
-function PomodoroRing({
-  color,
-  finished,
-  progress,
-  remaining,
-  large = false,
-}: {
-  color: string
-  finished: boolean
-  progress: number
-  remaining: number
-  large?: boolean
-}) {
-  const size = large ? 420 : 340
-  const center = size / 2
-  const radius = large ? 158 : 126
-  const circumference = 2 * Math.PI * radius
-  const strokeWidth = large ? 12 : 10
-
-  return (
-    <div className="relative flex items-center justify-center">
-      <motion.div
-        className={`absolute rounded-full ${large ? 'h-[320px] w-[320px] blur-[95px]' : 'h-[240px] w-[240px] blur-[78px]'}`}
-        style={{ background: `${color}2a` }}
-        animate={
-          finished
-            ? { opacity: 0.4, scale: 1 }
-            : { opacity: [0.42, 0.8, 0.42], scale: [1, 1.09, 1] }
-        }
-        transition={{ duration: 2.8, repeat: Infinity }}
-      />
-
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.1)"
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - progress)}
-          style={{ filter: `drop-shadow(0 0 18px ${color}a6)` }}
-        />
-      </svg>
-
-      <div className="absolute text-center">
-        {finished ? (
-          <motion.div
-            className="relative flex flex-col items-center gap-2"
-            initial={{ scale: 0.92, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-          >
-            <motion.div
-              className="absolute -inset-10 rounded-full bg-emerald-400/20 blur-2xl"
-              animate={{ scale: [1, 1.25, 1], opacity: [0.25, 0.55, 0.25] }}
-              transition={{ duration: 1.6, repeat: Infinity }}
-            />
-
-            {Array.from({ length: 10 }).map((_, index) => {
-              const angle = (index / 10) * Math.PI * 2
-              const x = Math.cos(angle) * 46
-              const y = Math.sin(angle) * 46
-              return (
-                <motion.span
-                  key={`done-particle-${index}`}
-                  className="absolute h-1.5 w-1.5 rounded-full bg-emerald-300"
-                  initial={{ x: 0, y: 0, opacity: 0.9, scale: 1 }}
-                  animate={{ x, y, opacity: 0, scale: 0.7 }}
-                  transition={{
-                    duration: 0.9,
-                    repeat: Infinity,
-                    delay: index * 0.05,
-                    ease: 'easeOut',
-                  }}
-                />
-              )
-            })}
-
-            <motion.div
-              animate={{ scale: [1, 1.12, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
-              <CheckCircle2 className="h-12 w-12 text-emerald-300" />
-            </motion.div>
-            <p className="text-sm font-bold text-emerald-200">
-              Session Complete
-            </p>
-          </motion.div>
-        ) : (
-          <>
-            <p
-              className={`font-mono font-black tracking-tight text-white ${large ? 'text-8xl' : 'text-6xl sm:text-7xl'}`}
-            >
-              {formatClock(remaining)}
-            </p>
-            <p className="mt-1 text-xs tracking-[0.2em] text-slate-500 uppercase">
-              remaining
-            </p>
-          </>
-        )}
-      </div>
-    </div>
   )
 }
