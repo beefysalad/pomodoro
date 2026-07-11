@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Pause, Play, RotateCcw, Zap, Timer, CheckCircle2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useClerk } from '@clerk/nextjs'
+import { formatClock } from '@/lib/format'
 
 type Mode = 'blitz' | 'focus' | 'deep'
 
@@ -34,15 +35,6 @@ const MODE_CONFIG: Record<
   },
 }
 
-function pad(n: number) {
-  return String(n).padStart(2, '0')
-}
-
-function formatTime(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${pad(m)}:${pad(s)}`
-}
 const DEFAULT_TITLE = 'Tempo'
 
 export function PublicTimer({
@@ -149,7 +141,7 @@ export function PublicTimer({
     }
 
     if (running || remaining < total) {
-      document.title = `⏱ ${formatTime(Math.max(0, remaining))} · ${config.label} · ${DEFAULT_TITLE}`
+      document.title = `⏱ ${formatClock(Math.max(0, remaining))} · ${config.label} · ${DEFAULT_TITLE}`
       return
     }
 
@@ -353,7 +345,7 @@ export function PublicTimer({
                   className={`font-mono leading-none font-[900] tracking-[-0.06em] ${isImmersiveRunning ? 'text-[72px]' : 'text-[52px]'}`}
                   style={{ color: 'var(--color-foreground)' }}
                 >
-                  {formatTime(remaining)}
+                  {formatClock(remaining)}
                 </span>
                 <span className="text-[11px] font-[600] tracking-widest text-slate-300/75 uppercase">
                   remaining
