@@ -363,8 +363,8 @@ export default function DashboardPage() {
                         size="sm"
                         className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
                           breakLength === 'short'
-                            ? 'bg-white/12 text-white hover:bg-white/12'
-                            : 'text-slate-300 hover:bg-white/8'
+                            ? 'bg-white/12 text-white hover:bg-white/12 dark:hover:bg-white/12'
+                            : 'text-slate-300 hover:bg-white/8 dark:hover:bg-white/8'
                         }`}
                         onClick={() => setBreakLength('short')}
                         disabled={running || pendingReview}
@@ -376,8 +376,8 @@ export default function DashboardPage() {
                         size="sm"
                         className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
                           breakLength === 'long'
-                            ? 'bg-white/12 text-white hover:bg-white/12'
-                            : 'text-slate-300 hover:bg-white/8'
+                            ? 'bg-white/12 text-white hover:bg-white/12 dark:hover:bg-white/12'
+                            : 'text-slate-300 hover:bg-white/8 dark:hover:bg-white/8'
                         }`}
                         onClick={() => setBreakLength('long')}
                         disabled={running || pendingReview}
@@ -478,12 +478,12 @@ export default function DashboardPage() {
 
                 <div className="mb-5 flex items-center gap-2 sm:hidden">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
+                    className={`h-auto rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
                       breakLength === 'short'
-                        ? 'border-white/20 bg-white/12 text-white hover:bg-white/12'
-                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5'
+                        ? 'border-white/20 bg-white/12 text-white hover:bg-white/12 dark:border-white/20 dark:bg-white/12 dark:hover:bg-white/12'
+                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/5'
                     }`}
                     onClick={() => setBreakLength('short')}
                     disabled={running || pendingReview}
@@ -491,12 +491,12 @@ export default function DashboardPage() {
                     Short breaks
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
+                    className={`h-auto rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
                       breakLength === 'long'
-                        ? 'border-white/20 bg-white/12 text-white hover:bg-white/12'
-                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5'
+                        ? 'border-white/20 bg-white/12 text-white hover:bg-white/12 dark:border-white/20 dark:bg-white/12 dark:hover:bg-white/12'
+                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/5'
                     }`}
                     onClick={() => setBreakLength('long')}
                     disabled={running || pendingReview}
