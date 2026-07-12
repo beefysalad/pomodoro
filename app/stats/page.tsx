@@ -1,18 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
-import {
-  BarChart3,
-  CheckCircle2,
-  Clock3,
-  Flame,
-  Lock,
-  Rocket,
-  Target,
-  Trophy,
-  Zap,
-} from 'lucide-react'
+import { BarChart3, CheckCircle2, Clock3, Flame, Rocket, Target, Zap } from 'lucide-react'
 import {
   Bar,
   CartesianGrid,
@@ -30,350 +18,218 @@ import { AppHeader } from '@/components/app-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ActivityHeatmap } from '@/components/stats/activity-heatmap'
+import { HighlightsCard } from '@/components/stats/highlights-card'
 import { InsightCard } from '@/components/stats/insight-card'
-import { SnapshotRow } from '@/components/stats/snapshot-row'
 import { StatCard } from '@/components/stats/stat-card'
-import { getTopics } from '@/lib/api/topics'
 import { formatDuration, formatPercent } from '@/lib/format'
-import { getLevelFromXp, getLevelProgress } from '@/lib/progression'
-import { useSubjects } from '@/hooks/use-subjects'
-import { useUser } from '@/hooks/use-user'
+import { useStats } from '@/hooks/use-stats'
 
-const CHART_COLORS = [
-  '#7c3aed',
-  '#06b6d4',
-  '#f59e0b',
-  '#10b981',
-  '#f43f5e',
-  '#3b82f6',
-]
+const CHART_COLORS = ['#7c3aed', '#a78bfa', '#ea580c', '#10b981', '#c4b5fd', '#fdba74']
+const TOOLTIP_STYLE = {
+  background: '#162032',
+  border: '1px solid #2d4163',
+  borderRadius: '10px',
+  color: '#e2e8f0',
+}
 
 export default function StatsPage() {
-  const { data: user } = useUser()
-  const levelProgress = getLevelProgress(user?.totalXP ?? 0)
-  const streak = user?.streak ?? 0
-  const nextStreakGoal =
-    streak < 3 ? 3 : streak < 7 ? 7 : streak < 14 ? 14 : streak + 7
-  const { data: subjects = [], isLoading: subjectsLoading } = useSubjects()
+  const { data: stats, isLoading } = useStats()
 
-  const topicQueries = useQueries({
-    queries: subjects.map((subject) => ({
-      queryKey: ['subject', subject.id],
-      queryFn: () => getTopics(subject.id),
-      enabled: !!subject.id,
-    })),
-  })
+  const subjects = stats?.subjects ?? []
+  const topTopics = stats?.topTopics ?? []
+  const heatmapDays = stats?.heatmap.days ?? []
 
-  const isLoading =
-    subjectsLoading ||
-    (subjects.length > 0 && topicQueries.some((query) => query.isLoading))
+  const subjectChart = subjects.slice(0, 8).map((subject) => ({
+    id: subject.id,
+    name: subject.name.length > 16 ? `${subject.name.slice(0, 16)}...` : subject.name,
+    timeMinutes: Math.round(subject.totalSeconds / 60),
+    sessions: subject.sessionCount,
+  }))
 
-  const stats = useMemo(() => {
-    const subjectSummaries = subjects.map((subject, index) => {
-      const topics = topicQueries[index]?.data?.topics ?? []
-      const totalSeconds = topics.reduce(
-        (sum, topic) => sum + topic.totalTime,
-        0
-      )
-      const totalSessions = topics.reduce(
-        (sum, topic) => sum + topic._count.sessions,
-        0
-      )
-      const doneTopics = topics.filter(
-        (topic) => topic.status === 'DONE'
-      ).length
-
-      return {
-        ...subject,
-        topics,
-        topicCount: topics.length,
-        doneTopics,
-        totalSeconds,
-        totalSessions,
-      }
-    })
-
-    const totalSeconds = subjectSummaries.reduce(
-      (sum, subject) => sum + subject.totalSeconds,
-      0
-    )
-    const totalSessions = subjectSummaries.reduce(
-      (sum, subject) => sum + subject.totalSessions,
-      0
-    )
-    const topicCount = subjectSummaries.reduce(
-      (sum, subject) => sum + subject.topicCount,
-      0
-    )
-
-    const avgSessionSeconds = totalSessions
-      ? Math.round(totalSeconds / totalSessions)
-      : 0
-
-    const topSubject = [...subjectSummaries].sort(
-      (a, b) => b.totalSeconds - a.totalSeconds
-    )[0]
-    const doneTopics = subjectSummaries.reduce(
-      (sum, subject) => sum + subject.doneTopics,
-      0
-    )
-    const completionRate = topicCount ? (doneTopics / topicCount) * 100 : 0
-    const concentrationRate = totalSeconds
-      ? ((topSubject?.totalSeconds ?? 0) / totalSeconds) * 100
-      : 0
-    const consistencyScore = Math.min(
-      100,
-      Math.round((user?.streak ?? 0) * 6 + Math.min(totalSessions, 20) * 3)
-    )
-
-    const topTopics = subjectSummaries
-      .flatMap((subject) =>
-        subject.topics.map((topic) => ({
-          id: topic.id,
-          name: topic.name,
-          subjectName: subject.name,
-          totalSeconds: topic.totalTime,
-          sessions: topic._count.sessions,
-        }))
-      )
-      .sort((a, b) => b.totalSeconds - a.totalSeconds)
-      .slice(0, 6)
-
-    const subjectChart = [...subjectSummaries]
-      .sort((a, b) => b.totalSeconds - a.totalSeconds)
-      .slice(0, 8)
-      .map((subject) => ({
-        id: subject.id,
-        name:
-          subject.name.length > 16
-            ? `${subject.name.slice(0, 16)}...`
-            : subject.name,
-        timeMinutes: Math.round(subject.totalSeconds / 60),
-        sessions: subject.totalSessions,
-        topics: subject.topicCount,
-      }))
-
-    const shareChart = subjectChart.map((subject, index) => ({
+  const shareChart = subjectChart
+    .map((subject, index) => ({
       ...subject,
       value: subject.timeMinutes,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }))
+    .filter((slice) => slice.value > 0)
 
-    const achievements = [
-      {
-        id: 'first-focus-hour',
-        title: 'First Focus Hour',
-        unlocked: totalSeconds >= 60 * 60,
-        progress: Math.min(100, Math.round((totalSeconds / (60 * 60)) * 100)),
-      },
-      {
-        id: 'ten-sessions',
-        title: 'Session Sprinter',
-        unlocked: totalSessions >= 10,
-        progress: Math.min(100, Math.round((totalSessions / 10) * 100)),
-      },
-      {
-        id: 'streak-7',
-        title: 'Streak Survivor',
-        unlocked: (user?.streak ?? 0) >= 7,
-        progress: Math.min(100, Math.round(((user?.streak ?? 0) / 7) * 100)),
-      },
-    ]
+  const avgSessionSeconds =
+    stats && stats.totals.sessions
+      ? Math.round(stats.totals.focusSeconds / stats.totals.sessions)
+      : 0
 
-    const quests = [
-      {
-        id: 'quest-sessions',
-        label: 'Complete 3 sessions',
-        current: Math.min(3, totalSessions),
-        target: 3,
-      },
-      {
-        id: 'quest-time',
-        label: 'Study 90 minutes',
-        current: Math.min(90, Math.floor(totalSeconds / 60)),
-        target: 90,
-      },
-      {
-        id: 'quest-topics',
-        label: 'Touch 5 topics',
-        current: Math.min(5, topicCount),
-        target: 5,
-      },
-    ]
-
-    return {
-      subjectSummaries,
-      totalSeconds,
-      totalSessions,
-      topicCount,
-      avgSessionSeconds,
-      topSubject,
-      completionRate,
-      concentrationRate,
-      consistencyScore,
-      topTopics,
-      subjectChart,
-      shareChart,
-      achievements,
-      quests,
-    }
-  }, [subjects, topicQueries, user?.streak])
+  const momentumMessage =
+    stats && stats.totals.sessions >= 20
+      ? 'You have built a strong study rhythm. Keep consistency to compound gains.'
+      : 'Stack small wins. Short daily sessions build faster long-term retention.'
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#070b16] text-slate-100">
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-0 left-[-140px] h-[420px] w-[420px] rounded-full bg-cyan-500/12 blur-[140px]" />
-        <div className="absolute right-[-120px] bottom-[-100px] h-[420px] w-[420px] rounded-full bg-violet-600/15 blur-[140px]" />
+        <div className="absolute top-0 left-[-140px] h-[420px] w-[420px] rounded-full bg-violet-glow blur-[140px]" />
+        <div className="absolute right-[-120px] bottom-[-100px] h-[420px] w-[420px] rounded-full bg-streak-bg blur-[140px]" />
       </div>
 
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
         <AppHeader />
 
         <section>
-          <p className="text-xs font-semibold tracking-[0.18em] text-cyan-300 uppercase">
+          <p className="text-xs font-semibold tracking-[0.18em] text-violet-mid uppercase">
             Advanced Stats
           </p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-foreground sm:text-4xl">
             Your full study analytics
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Deep breakdowns across XP, session volume, subject performance, and
-            time distribution.
+          <p className="mt-2 text-sm text-text-sub">
+            Deep breakdowns across XP, session volume, subject performance, and time
+            distribution.
           </p>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            icon={Zap}
-            label="Total XP"
-            value={String(user?.totalXP ?? 0)}
-          />
-          <StatCard
-            icon={Rocket}
-            label="Current Level"
-            value={`Lvl ${getLevelFromXp(user?.totalXP ?? 0)}`}
-          />
-          <StatCard
-            icon={Clock3}
-            label="Focus Time"
-            value={formatDuration(stats.totalSeconds)}
-          />
-          <StatCard
-            id="tutorial-stats-sessions"
-            icon={BarChart3}
-            label="Sessions"
-            value={String(stats.totalSessions)}
-          />
-        </section>
+        {isLoading || !stats ? (
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+            ))}
+          </section>
+        ) : (
+          <>
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                icon={Zap}
+                label="Total XP"
+                value={String(stats.totals.xp)}
+                trend={stats.trends.xp}
+              />
+              <StatCard icon={Rocket} label="Current Level" value={`Lvl ${stats.totals.level}`} />
+              <StatCard
+                icon={Clock3}
+                label="Focus Time"
+                value={formatDuration(stats.totals.focusSeconds)}
+                trend={stats.trends.focusSeconds}
+              />
+              <StatCard
+                id="tutorial-stats-sessions"
+                icon={BarChart3}
+                label="Sessions"
+                value={String(stats.totals.sessions)}
+                trend={stats.trends.sessions}
+              />
+            </section>
 
-        <Card id="tutorial-stats-level" className="py-0 backdrop-blur-xl">
-          <CardContent className="space-y-3 px-4 py-5 sm:px-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-bold text-white">Level progress</h2>
-              <Badge className="bg-cyan-500/20 text-cyan-200">
-                {levelProgress.xpToNext} XP to Level {levelProgress.level + 1}
-              </Badge>
-            </div>
-            <Progress
-              value={levelProgress.progressPct}
-              className="h-2.5 bg-white/10"
-            />
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>
-                Level {levelProgress.level} • {levelProgress.xpIntoLevel}/
-                {levelProgress.xpForLevel} XP
-              </span>
-              <span>{Math.round(levelProgress.progressPct)}%</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <section
-          id="tutorial-stats-streak"
-          className="rounded-2xl border border-orange-300/35 bg-gradient-to-r from-orange-500/22 via-amber-500/12 to-transparent px-4 py-3 sm:px-5"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-orange-300/45 bg-orange-500/20 p-2">
-                <Flame className="h-5 w-5 text-orange-100" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-orange-100 uppercase">
-                  Streak spotlight
-                </p>
-                <p className="text-3xl leading-none font-black text-white sm:text-4xl">
-                  {streak}
-                  <span className="ml-1 text-lg font-semibold text-orange-100/90 sm:text-xl">
-                    day{streak === 1 ? '' : 's'}
+            <Card id="tutorial-stats-level" className="border-border bg-surface py-0">
+              <CardContent className="space-y-3 px-4 py-5 sm:px-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-base font-bold text-foreground">Level progress</h2>
+                  <Badge className="border border-violet/30 bg-violet-glow text-violet-mid">
+                    {stats.levelProgress.xpToNext} XP to Level {stats.levelProgress.level + 1}
+                  </Badge>
+                </div>
+                <Progress value={stats.levelProgress.progressPct} className="h-2.5 bg-surface-hi" />
+                <div className="flex items-center justify-between text-xs text-text-sub">
+                  <span>
+                    Level {stats.levelProgress.level} · {stats.levelProgress.xpIntoLevel}/
+                    {stats.levelProgress.xpForLevel} XP
                   </span>
-                </p>
-                <p className="text-xs text-orange-100/80">
-                  Keep showing up daily to protect momentum.
-                </p>
+                  <span>{Math.round(stats.levelProgress.progressPct)}%</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <section
+              id="tutorial-stats-streak"
+              className="rounded-2xl border border-streak/35 bg-gradient-to-r from-streak-bg via-streak-bg to-transparent px-4 py-3 sm:px-5"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-streak/45 bg-streak-bg p-2">
+                    <Flame className="h-5 w-5 text-streak" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-[0.16em] text-streak uppercase">
+                      Streak spotlight
+                    </p>
+                    <p className="text-3xl leading-none font-black text-foreground sm:text-4xl">
+                      {stats.streak.current}
+                      <span className="ml-1 text-lg font-semibold text-streak/90 sm:text-xl">
+                        day{stats.streak.current === 1 ? '' : 's'}
+                      </span>
+                    </p>
+                    <p className="text-xs text-streak/80">
+                      Keep showing up daily to protect momentum.
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-streak/35 bg-streak-bg px-3 py-2 text-right">
+                  <p className="text-[10px] font-semibold tracking-[0.12em] text-streak uppercase">
+                    Next goal
+                  </p>
+                  <p className="text-lg font-extrabold text-foreground">
+                    {stats.streak.nextGoal} days
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="rounded-xl border border-orange-300/35 bg-orange-500/15 px-3 py-2 text-right">
-              <p className="text-[10px] font-semibold tracking-[0.12em] text-orange-100 uppercase">
-                Next goal
-              </p>
-              <p className="text-lg font-extrabold text-white">
-                {nextStreakGoal} days
-              </p>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        <section className="grid gap-4 sm:grid-cols-3">
-          <InsightCard
-            icon={Flame}
-            label="Consistency score"
-            value={formatPercent(stats.consistencyScore)}
-            hint="Derived from streak and session cadence."
-            accent="from-orange-500/18 to-orange-500/5"
-          />
-          <InsightCard
-            icon={CheckCircle2}
-            label="Topic completion"
-            value={formatPercent(stats.completionRate)}
-            hint="Done topics across all tracked topics."
-            accent="from-emerald-500/18 to-emerald-500/5"
-          />
-          <InsightCard
-            icon={Target}
-            label="Focus concentration"
-            value={formatPercent(stats.concentrationRate)}
-            hint="How much time is concentrated in your top subject."
-            accent="from-cyan-500/18 to-cyan-500/5"
-          />
-        </section>
+            <Card className="border-border bg-surface py-0">
+              <CardContent className="space-y-3 px-4 py-5 sm:px-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-foreground">Activity, last 12 weeks</h2>
+                  <Badge className="border border-violet/30 bg-violet-glow text-violet-mid">
+                    {heatmapDays.filter((d) => d.seconds > 0).length} active days
+                  </Badge>
+                </div>
+                <ActivityHeatmap days={heatmapDays} />
+              </CardContent>
+            </Card>
 
-        <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-          <div className="space-y-6">
-            <Card id="tutorial-stats-graph" className="py-0 backdrop-blur-xl">
+            <section className="grid gap-4 sm:grid-cols-3">
+              <InsightCard
+                icon={Flame}
+                label="Consistency score"
+                value={formatPercent(stats.insights.consistencyScore)}
+                hint="Derived from streak and session cadence."
+                accent="bg-gradient-to-br from-streak-bg to-transparent"
+              />
+              <InsightCard
+                icon={CheckCircle2}
+                label="Topic completion"
+                value={formatPercent(stats.insights.completionRate)}
+                hint="Done topics across all tracked topics."
+                accent="bg-gradient-to-br from-success-bg to-transparent"
+              />
+              <InsightCard
+                icon={Target}
+                label="Focus concentration"
+                value={formatPercent(stats.insights.concentrationRate)}
+                hint="How much time is concentrated in your top subject."
+                accent="bg-gradient-to-br from-violet-glow to-transparent"
+              />
+            </section>
+
+            <Card id="tutorial-stats-graph" className="border-border bg-surface py-0">
               <CardContent className="space-y-4 px-4 py-5 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="text-lg font-bold text-foreground">
                     Time + sessions by subject
                   </h2>
-                  <Badge className="bg-violet-500/20 text-violet-200">
-                    Top {Math.max(0, stats.subjectChart.length)}
+                  <Badge className="border border-violet/30 bg-violet-glow text-violet-mid">
+                    Top {subjectChart.length}
                   </Badge>
                 </div>
 
-                {isLoading ? (
-                  <p className="text-sm text-slate-400">Loading analytics...</p>
-                ) : !stats.subjectChart.length ? (
-                  <p className="text-sm text-slate-400">
+                {!subjectChart.length ? (
+                  <p className="text-sm text-text-sub">
                     Create your first subject to unlock analytics.
                   </p>
                 ) : (
                   <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={stats.subjectChart}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke="rgba(148,163,184,0.2)"
-                        />
+                      <ComposedChart data={subjectChart}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
                         <XAxis
                           dataKey="name"
                           tick={{ fill: '#94a3b8', fontSize: 12 }}
@@ -393,17 +249,8 @@ export default function StatsPage() {
                           axisLine={{ stroke: 'rgba(148,163,184,0.3)' }}
                           tickLine={{ stroke: 'rgba(148,163,184,0.3)' }}
                         />
-                        <Tooltip
-                          contentStyle={{
-                            background: 'rgba(10,14,30,0.94)',
-                            border: '1px solid rgba(148,163,184,0.25)',
-                            borderRadius: '10px',
-                            color: '#e2e8f0',
-                          }}
-                          labelStyle={{ color: '#f8fafc' }}
-                          itemStyle={{ color: '#cbd5e1' }}
-                        />
-                        <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#e2e8f0' }} itemStyle={{ color: '#94a3b8' }} />
+                        <Legend wrapperStyle={{ color: '#94a3b8' }} />
                         <Bar
                           yAxisId="left"
                           dataKey="timeMinutes"
@@ -416,7 +263,7 @@ export default function StatsPage() {
                           dataKey="sessions"
                           name="Sessions"
                           radius={[6, 6, 0, 0]}
-                          fill="#06b6d4"
+                          fill="#a78bfa"
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -425,275 +272,138 @@ export default function StatsPage() {
               </CardContent>
             </Card>
 
-            <Card className="py-0 backdrop-blur-xl">
-              <CardContent className="space-y-4 px-4 py-5 sm:px-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-white">
-                    Subject breakdown
-                  </h2>
-                  <Badge className="bg-cyan-500/20 text-cyan-200">
-                    {stats.subjectSummaries.length} subjects
-                  </Badge>
-                </div>
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <Card className="border-border bg-surface py-0">
+                <CardContent className="space-y-4 px-4 py-5 sm:px-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-foreground">Subject breakdown</h2>
+                    <Badge className="border border-violet/30 bg-violet-glow text-violet-mid">
+                      {subjects.length} subjects
+                    </Badge>
+                  </div>
 
-                {isLoading ? (
-                  <p className="text-sm text-slate-400">Loading analytics...</p>
-                ) : !stats.subjectSummaries.length ? (
-                  <p className="text-sm text-slate-400">No subject data yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {stats.subjectSummaries
-                      .sort((a, b) => b.totalSeconds - a.totalSeconds)
-                      .map((subject) => {
-                        const percentage = stats.totalSeconds
-                          ? Math.round(
-                              (subject.totalSeconds / stats.totalSeconds) * 100
-                            )
+                  {!subjects.length ? (
+                    <p className="text-sm text-text-sub">No subject data yet.</p>
+                  ) : (
+                    <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                      {subjects.map((subject) => {
+                        const percentage = stats.totals.focusSeconds
+                          ? Math.round((subject.totalSeconds / stats.totals.focusSeconds) * 100)
                           : 0
 
                         return (
                           <div
                             key={subject.id}
-                            className="bg-glass-subtle rounded-xl border border-white/10 p-3"
+                            className="rounded-xl border border-border-up bg-surface-up p-3"
                           >
                             <div className="mb-1.5 flex items-center justify-between text-sm">
-                              <span className="font-semibold text-white">
-                                {subject.name}
-                              </span>
-                              <span className="text-slate-300">
+                              <span className="font-semibold text-foreground">{subject.name}</span>
+                              <span className="text-text-sub">
                                 {formatDuration(subject.totalSeconds)}
                               </span>
                             </div>
-                            <Progress
-                              value={Math.max(4, percentage)}
-                              className="h-2 bg-white/10"
-                            />
-                            <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400">
-                              <span>{subject.totalSessions} sessions</span>
+                            <Progress value={Math.max(4, percentage)} className="h-2 bg-surface-hi" />
+                            <div className="mt-1.5 flex items-center justify-between text-xs text-text-sub">
+                              <span>{subject.sessionCount} sessions</span>
                               <span>{subject.topicCount} topics</span>
                             </div>
                           </div>
                         )
                       })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-          <div className="space-y-6">
-            <Card className="py-0 backdrop-blur-xl">
-              <CardContent className="space-y-4 px-4 py-5 sm:px-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-white">Time share</h2>
-                  <Badge className="bg-emerald-500/20 text-emerald-200">
-                    {stats.shareChart.length} slices
-                  </Badge>
-                </div>
-                {isLoading ? (
-                  <p className="text-sm text-slate-400">Loading chart...</p>
-                ) : !stats.shareChart.length ? (
-                  <p className="text-sm text-slate-400">No chart data yet.</p>
-                ) : (
-                  <div className="h-[260px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={stats.shareChart}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={62}
-                          outerRadius={96}
-                          paddingAngle={2}
+              <Card className="border-border bg-surface py-0">
+                <CardContent className="space-y-4 px-4 py-5 sm:px-5">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">Time share</h2>
+                    <Badge className="border border-violet/30 bg-violet-glow text-violet-mid">
+                      {shareChart.length} slices
+                    </Badge>
+                  </div>
+                  {!shareChart.length ? (
+                    <p className="text-sm text-text-sub">No chart data yet.</p>
+                  ) : (
+                    <div className="h-[220px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={shareChart}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={56}
+                            outerRadius={86}
+                            paddingAngle={2}
+                          >
+                            {shareChart.map((entry) => (
+                              <Cell key={entry.id} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={TOOLTIP_STYLE}
+                            labelStyle={{ color: '#e2e8f0' }}
+                            itemStyle={{ color: '#94a3b8' }}
+                            formatter={(value: number | string | undefined) => [
+                              `${value ?? 0}m`,
+                              'Time',
+                            ]}
+                          />
+                          <Legend wrapperStyle={{ color: '#94a3b8', fontSize: '12px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <h3 className="text-sm font-semibold text-foreground">Top topics</h3>
+                    {!topTopics.length ? (
+                      <p className="text-sm text-text-sub">No topic data yet.</p>
+                    ) : (
+                      topTopics.map((topic, index) => (
+                        <div
+                          key={topic.id}
+                          className="rounded-lg border border-border-up bg-surface-up px-3 py-2"
                         >
-                          {stats.shareChart.map((entry) => (
-                            <Cell key={entry.id} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            background: 'rgba(10,14,30,0.94)',
-                            border: '1px solid rgba(148,163,184,0.25)',
-                            borderRadius: '10px',
-                            color: '#e2e8f0',
-                          }}
-                          labelStyle={{ color: '#f8fafc' }}
-                          itemStyle={{ color: '#cbd5e1' }}
-                          formatter={(value: number | string | undefined) => [
-                            `${value ?? 0}m`,
-                            'Time',
-                          ]}
-                        />
-                        <Legend
-                          wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }}
-                          formatter={(value) => (
-                            <span style={{ color: '#cbd5e1' }}>{value}</span>
-                          )}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="py-0 backdrop-blur-xl">
-              <CardContent className="space-y-3 px-4 py-5 sm:px-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-white">Top topics</h2>
-                  <Badge className="bg-violet-500/20 text-violet-200">
-                    {stats.topTopics.length} tracked
-                  </Badge>
-                </div>
-                {!stats.topTopics.length ? (
-                  <p className="text-sm text-slate-400">No topic data yet.</p>
-                ) : (
-                  <div className="space-y-2.5">
-                    {stats.topTopics.map((topic, index) => (
-                      <div
-                        key={topic.id}
-                        className="bg-glass-subtle rounded-lg border border-white/10 px-3 py-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-semibold text-white">
-                            #{index + 1} {topic.name}
-                          </p>
-                          <p className="text-xs text-slate-300">
-                            {formatDuration(topic.totalSeconds)}
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-semibold text-foreground">
+                              #{index + 1} {topic.name}
+                            </p>
+                            <p className="text-xs text-text-sub">
+                              {formatDuration(topic.totalSeconds)}
+                            </p>
+                          </div>
+                          <p className="mt-0.5 text-xs text-text-sub">
+                            {topic.subjectName} · {topic.sessions} sessions
                           </p>
                         </div>
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          {topic.subjectName} · {topic.sessions} sessions
-                        </p>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card className="py-0 backdrop-blur-xl">
-              <CardContent className="space-y-3 px-4 py-5 sm:px-5">
-                <h2 className="text-base font-bold text-white">Daily quests</h2>
-                {stats.quests.map((quest) => {
-                  const progress = Math.round(
-                    (quest.current / quest.target) * 100
-                  )
-                  const done = quest.current >= quest.target
-                  return (
-                    <div
-                      key={quest.id}
-                      className="bg-glass-subtle rounded-lg border border-white/10 px-3 py-2.5"
-                    >
-                      <div className="mb-1.5 flex items-center justify-between text-sm">
-                        <span className="text-slate-200">{quest.label}</span>
-                        <span
-                          className={
-                            done ? 'text-emerald-300' : 'text-slate-400'
-                          }
-                        >
-                          {quest.current}/{quest.target}
-                        </span>
-                      </div>
-                      <Progress
-                        value={Math.max(4, progress)}
-                        className="h-2 bg-white/10"
-                      />
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-
-            <Card className="py-0 backdrop-blur-xl">
-              <CardContent className="space-y-3 px-4 py-5 sm:px-5">
-                <h2 className="text-base font-bold text-white">Achievements</h2>
-                {stats.achievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className="bg-glass-subtle rounded-lg border border-white/10 px-3 py-2.5"
-                  >
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="inline-flex items-center gap-2 text-slate-200">
-                        {achievement.unlocked ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
-                        ) : (
-                          <Lock className="h-3.5 w-3.5 text-slate-500" />
-                        )}
-                        {achievement.title}
-                      </span>
-                      <span className="text-slate-400">
-                        {achievement.progress}%
-                      </span>
-                    </div>
-                    <Progress
-                      value={Math.max(4, achievement.progress)}
-                      className="h-2 bg-white/10"
-                    />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card className="py-0 backdrop-blur-xl">
-              <CardContent className="space-y-3 px-4 py-5 sm:px-5">
-                <h2 className="text-base font-bold text-white">
-                  Performance snapshot
-                </h2>
-                <SnapshotRow
-                  label="Current streak"
-                  value={`${user?.streak ?? 0} days`}
-                  icon={Flame}
-                />
-                <SnapshotRow
-                  label="Tracked topics"
-                  value={String(stats.topicCount)}
-                  icon={BarChart3}
-                />
-                <SnapshotRow
-                  label="Avg session"
-                  value={formatDuration(stats.avgSessionSeconds)}
-                  icon={Clock3}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="py-0 backdrop-blur-xl">
-              <CardContent className="space-y-2 px-4 py-5 sm:px-5">
-                <h2 className="text-base font-bold text-white">Top subject</h2>
-                {stats.topSubject ? (
-                  <>
-                    <p className="text-lg font-extrabold text-white">
-                      {stats.topSubject.name}
-                    </p>
-                    <p className="text-sm text-slate-300">
-                      {formatDuration(stats.topSubject.totalSeconds)} across{' '}
-                      {stats.topSubject.totalSessions} sessions.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-slate-400">No sessions yet.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-violet-500/15 to-cyan-500/10 py-0 backdrop-blur-xl">
-              <CardContent className="px-4 py-5 sm:px-5">
-                <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-100">
-                  <Trophy className="h-4 w-4" />
-                  Momentum insight
-                </p>
-                <p className="mt-2 text-sm text-slate-200">
-                  {stats.totalSessions >= 20
-                    ? 'You have built a strong study rhythm. Keep consistency to compound gains.'
-                    : 'Stack small wins. Short daily sessions build faster long-term retention.'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
+              <HighlightsCard
+                streakDays={stats.streak.current}
+                topicCount={subjects.reduce((sum, s) => sum + s.topicCount, 0)}
+                avgSessionSeconds={avgSessionSeconds}
+                topSubject={
+                  stats.topSubject
+                    ? {
+                        name: stats.topSubject.name,
+                        totalSeconds: stats.topSubject.totalSeconds,
+                        sessionCount: stats.topSubject.sessionCount,
+                      }
+                    : null
+                }
+                momentumMessage={momentumMessage}
+              />
+            </section>
+          </>
+        )}
       </div>
     </div>
   )
