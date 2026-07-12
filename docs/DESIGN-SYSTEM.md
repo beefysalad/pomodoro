@@ -35,6 +35,10 @@ These variables are already configured in `app/globals.css`. Use standard Tailwi
   - `bg-success-bg` (`rgba(16, 185, 129, 0.1)`): Success tag backgrounds.
   - `text-destructive` (`#EF4444`): Delete, errors, streak-at-risk.
   - `text-amber` (`#D97706`): Blitz focus mode timer.
+- **Timer Modes** (see `lib/timer-modes.ts` for the canonical values consumed by both the public and in-app timers):
+  - Blitz — `text-amber` (`#D97706`).
+  - Focus — `text-violet` (`#7C3AED`).
+  - Deep — `#06B6D4` (no named token today; a raw hex used at every call site via `lib/timer-modes.ts`, consider promoting to a CSS variable if a fourth consumer appears).
 
 ---
 
@@ -45,7 +49,7 @@ We use exactly **one** font: `Geist Mono` (`--font-geist-mono`). It handles ever
 ### Font Configurations
 
 - **Hero / Giant Headers**: 56px, weight `900`, tracking `-0.04em`.
-- **Timers**: 52px, weight `800`, tracking `-0.04em`, color `violet-mid`.
+- **Timers**: `font-mono font-black tracking-tight`, color neutral `text-white` (not `violet-mid` — the ring/glow carries the active mode color, so the digits themselves stay maximally legible at the sizes below). Rendered by the shared `components/timer/pomodoro-dial.tsx`, sized via its `size` prop: `md` 64px (compact/idle demo state), `lg` 88px (dashboard inline), `xl` 116px (immersive running state, dashboard focus-mode overlay).
 - **Standard Heading**: 30px, weight `800`, tracking `-0.03em`.
 - **Subheading**: 16px, weight `600`, tracking `-0.01em`.
 - **Body**: 13px, weight `400`, tracking `0`, color `text-sub`.
