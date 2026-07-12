@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PomodoroRing } from '@/components/dashboard/pomodoro-ring'
 import { SessionRatingPanel } from '@/components/dashboard/session-rating-panel'
 import { TimerControls } from '@/components/dashboard/timer-controls'
+import { PomodoroDial } from '@/components/timer/pomodoro-dial'
+import { BREAK_MODE_COLOR } from '@/lib/timer-modes'
 import type { TimerPhase } from '@/app/providers/timer-provider'
 import type { Quote } from '@/lib/api/quote'
 
@@ -92,12 +93,13 @@ export function FocusModeOverlay({
             </div>
 
             <div className="flex flex-1 flex-col items-center justify-center gap-8">
-              <PomodoroRing
-                color={phase === 'focus' ? activeModeColor : '#22c55e'}
-                finished={finished}
+              <PomodoroDial
+                color={phase === 'focus' ? activeModeColor : BREAK_MODE_COLOR}
                 progress={progress}
                 remaining={timerRemaining}
-                large
+                finished={finished}
+                running={running}
+                size="xl"
               />
 
               {!!quote && (

@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Flame, Maximize2, Timer } from 'lucide-react'
 import { AppHeader } from '@/components/app-header'
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog'
 import { FocusModeOverlay } from '@/components/dashboard/focus-mode-overlay'
 import { ModeSelector } from '@/components/dashboard/mode-selector'
-import { PomodoroRing } from '@/components/dashboard/pomodoro-ring'
 import { SessionRatingPanel } from '@/components/dashboard/session-rating-panel'
 import { TimerControls } from '@/components/dashboard/timer-controls'
+import { PomodoroDial } from '@/components/timer/pomodoro-dial'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -18,6 +19,7 @@ import {
   type TimerMode as Mode,
 } from '@/app/providers/timer-provider'
 import { getLevelFromXp } from '@/lib/progression'
+import { BREAK_MODE_COLOR, TIMER_MODES } from '@/lib/timer-modes'
 import { useCompleteSession } from '@/hooks/use-sessions'
 import { useSubjects } from '@/hooks/use-subjects'
 import { useSubjectTopics, useUpdateTopic } from '@/hooks/use-topics'
@@ -25,39 +27,7 @@ import { useUser } from '@/hooks/use-user'
 import { useQuote } from '@/hooks/use-quote'
 import { TOPIC_STATUS_LABEL } from '@/lib/topic-status'
 
-const MODE_META: Record<
-  Mode,
-  {
-    label: string
-    xp: number
-    color: string
-    subtitle: (minutes: number) => string
-  }
-> = {
-  blitz: {
-    label: 'Blitz',
-    xp: 10,
-    color: '#f59e0b',
-    subtitle: (minutes) => `${minutes} min sprint`,
-  },
-  focus: {
-    label: 'Focus',
-    xp: 25,
-    color: '#7c3aed',
-    subtitle: (minutes) => `${minutes} min session`,
-  },
-  deep: {
-    label: 'Deep',
-    xp: 50,
-    color: '#06b6d4',
-    subtitle: (minutes) => `${minutes} min block`,
-  },
-}
-
-const DEFAULT_TIMER_MINUTES = {
-  blitz: 10,
-  focus: 25,
-  deep: 50,
+const DEFAULT_BREAK_MINUTES = {
   shortBreak: 5,
   longBreak: 10,
 } as const
@@ -122,42 +92,36 @@ export default function DashboardPage() {
   const forceCompletionFocus = finished
 
   const modeConfig = useMemo(() => {
+    const buildEntry = (m: Mode, minutes: number) => ({
+      label: TIMER_MODES[m].label,
+      xp: TIMER_MODES[m].xp,
+      color: TIMER_MODES[m].color,
+      subtitle: TIMER_MODES[m].describeDuration,
+      minutes,
+      seconds: Math.round(minutes * 60),
+    })
+
     if (isDevTimer) {
       return {
-        blitz: {
-          ...MODE_META.blitz,
-          minutes: DEV_TIMER_MINUTES.blitz,
-          seconds: Math.round(DEV_TIMER_MINUTES.blitz * 60),
-        },
-        focus: {
-          ...MODE_META.focus,
-          minutes: DEV_TIMER_MINUTES.focus,
-          seconds: Math.round(DEV_TIMER_MINUTES.focus * 60),
-        },
-        deep: {
-          ...MODE_META.deep,
-          minutes: DEV_TIMER_MINUTES.deep,
-          seconds: Math.round(DEV_TIMER_MINUTES.deep * 60),
-        },
+        blitz: buildEntry('blitz', DEV_TIMER_MINUTES.blitz),
+        focus: buildEntry('focus', DEV_TIMER_MINUTES.focus),
+        deep: buildEntry('deep', DEV_TIMER_MINUTES.deep),
       }
     }
 
     return {
-      blitz: {
-        ...MODE_META.blitz,
-        minutes: user?.blitzMinutes ?? DEFAULT_TIMER_MINUTES.blitz,
-        seconds: (user?.blitzMinutes ?? DEFAULT_TIMER_MINUTES.blitz) * 60,
-      },
-      focus: {
-        ...MODE_META.focus,
-        minutes: user?.focusMinutes ?? DEFAULT_TIMER_MINUTES.focus,
-        seconds: (user?.focusMinutes ?? DEFAULT_TIMER_MINUTES.focus) * 60,
-      },
-      deep: {
-        ...MODE_META.deep,
-        minutes: user?.deepMinutes ?? DEFAULT_TIMER_MINUTES.deep,
-        seconds: (user?.deepMinutes ?? DEFAULT_TIMER_MINUTES.deep) * 60,
-      },
+      blitz: buildEntry(
+        'blitz',
+        user?.blitzMinutes ?? TIMER_MODES.blitz.defaultMinutes
+      ),
+      focus: buildEntry(
+        'focus',
+        user?.focusMinutes ?? TIMER_MODES.focus.defaultMinutes
+      ),
+      deep: buildEntry(
+        'deep',
+        user?.deepMinutes ?? TIMER_MODES.deep.defaultMinutes
+      ),
     }
   }, [isDevTimer, user?.blitzMinutes, user?.focusMinutes, user?.deepMinutes])
 
@@ -165,8 +129,8 @@ export default function DashboardPage() {
   const breakSeconds = isDevTimer
     ? BREAK_SECONDS(DEV_TIMER_MINUTES.shortBreak, DEV_TIMER_MINUTES.longBreak)
     : BREAK_SECONDS(
-        user?.shortBreakMinutes ?? DEFAULT_TIMER_MINUTES.shortBreak,
-        user?.longBreakMinutes ?? DEFAULT_TIMER_MINUTES.longBreak
+        user?.shortBreakMinutes ?? DEFAULT_BREAK_MINUTES.shortBreak,
+        user?.longBreakMinutes ?? DEFAULT_BREAK_MINUTES.longBreak
       )
   const totalSeconds =
     phase === 'focus' ? activeMode.seconds : breakSeconds[breakLength]
@@ -375,24 +339,151 @@ export default function DashboardPage() {
             </section>
           )}
 
-          <section className="bg-glass-soft rounded-2xl border border-white/10 p-4 backdrop-blur-xl sm:p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <ModeSelector
-                modeConfig={modeConfig}
-                mode={mode}
-                disabled={running || pendingReview}
-                onChangeMode={onChangeMode}
-              />
+          <AnimatePresence>
+            {!running && (
+              <motion.section
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="bg-glass-soft rounded-2xl border border-white/5 p-4 backdrop-blur-xl sm:p-6"
+              >
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <ModeSelector
+                    modeConfig={modeConfig}
+                    mode={mode}
+                    disabled={running || pendingReview}
+                    onChangeMode={onChangeMode}
+                  />
 
-              <div className="flex items-center gap-2">
-                <div className="bg-glass-subtle hidden items-center gap-1 rounded-xl border border-white/10 p-1 sm:flex">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-glass-subtle hidden items-center gap-1 rounded-xl border border-white/10 p-1 sm:flex">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
+                          breakLength === 'short'
+                            ? 'bg-white/12 text-white hover:bg-white/12'
+                            : 'text-slate-300 hover:bg-white/8'
+                        }`}
+                        onClick={() => setBreakLength('short')}
+                        disabled={running || pendingReview}
+                      >
+                        Short breaks
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
+                          breakLength === 'long'
+                            ? 'bg-white/12 text-white hover:bg-white/12'
+                            : 'text-slate-300 hover:bg-white/8'
+                        }`}
+                        onClick={() => setBreakLength('long')}
+                        disabled={running || pendingReview}
+                      >
+                        Long breaks
+                      </Button>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="h-10 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                      onClick={() => setIsFocusMode(true)}
+                      id="tutorial-focus-button"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                      Focus mode
+                    </Button>
+                    <Link href="/stats" id="tutorial-stats">
+                      <Button
+                        variant="outline"
+                        className="h-10 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                      >
+                        View stats
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="mb-5 grid gap-3 md:grid-cols-3">
+                  <div>
+                    <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                      Subject
+                    </Label>
+                    <select
+                      value={resolvedSubjectId}
+                      onChange={(event) =>
+                        setActiveSubjectId(event.target.value)
+                      }
+                      className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white transition outline-none focus:border-violet-400/50"
+                      disabled={!subjects.length || phase === 'break'}
+                    >
+                      {!subjects.length ? (
+                        <option value="">No subjects yet</option>
+                      ) : (
+                        subjects.map((subject) => (
+                          <option
+                            key={subject.id}
+                            value={subject.id}
+                            className="bg-slate-900 text-white"
+                          >
+                            {subject.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                      Topic
+                    </Label>
+                    <select
+                      value={resolvedTopicId}
+                      onChange={(event) =>
+                        setSelectedTopicId(event.target.value)
+                      }
+                      className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white transition outline-none focus:border-violet-400/50"
+                      disabled={!topics.length || phase === 'break'}
+                    >
+                      {!topics.length ? (
+                        <option value="">No topics yet</option>
+                      ) : (
+                        topics.map((topic) => (
+                          <option
+                            key={topic.id}
+                            value={topic.id}
+                            className="bg-slate-900 text-white"
+                          >
+                            {topic.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                      Status
+                    </Label>
+                    <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-slate-200">
+                      {phase === 'break'
+                        ? 'Break'
+                        : currentTopic
+                          ? TOPIC_STATUS_LABEL[currentTopic.status]
+                          : 'No topic selected'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-5 flex items-center gap-2 sm:hidden">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
+                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
                       breakLength === 'short'
-                        ? 'bg-white/12 text-white hover:bg-white/12'
-                        : 'text-slate-300 hover:bg-white/8'
+                        ? 'border-white/20 bg-white/12 text-white hover:bg-white/12'
+                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5'
                     }`}
                     onClick={() => setBreakLength('short')}
                     disabled={running || pendingReview}
@@ -400,12 +491,12 @@ export default function DashboardPage() {
                     Short breaks
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
+                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
                       breakLength === 'long'
-                        ? 'bg-white/12 text-white hover:bg-white/12'
-                        : 'text-slate-300 hover:bg-white/8'
+                        ? 'border-white/20 bg-white/12 text-white hover:bg-white/12'
+                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5'
                     }`}
                     onClick={() => setBreakLength('long')}
                     disabled={running || pendingReview}
@@ -413,170 +504,69 @@ export default function DashboardPage() {
                     Long breaks
                   </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  className="h-10 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                  onClick={() => setIsFocusMode(true)}
-                  id="tutorial-focus-button"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                  Focus mode
-                </Button>
-                <Link href="/stats" id="tutorial-stats">
-                  <Button
-                    variant="outline"
-                    className="h-10 border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
-                  >
-                    View stats
-                  </Button>
-                </Link>
-              </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
+
+          <div className="flex flex-col items-center gap-8 py-6 sm:py-10">
+            <div id="tutorial-timer">
+              <PomodoroDial
+                color={phase === 'focus' ? activeMode.color : BREAK_MODE_COLOR}
+                progress={progress}
+                remaining={timerRemaining}
+                finished={finished}
+                running={running}
+                size="lg"
+              />
             </div>
 
-            <div className="mb-5 grid gap-3 md:grid-cols-3">
-              <div>
-                <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                  Subject
-                </Label>
-                <select
-                  value={resolvedSubjectId}
-                  onChange={(event) => setActiveSubjectId(event.target.value)}
-                  className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white transition outline-none focus:border-violet-400/50"
-                  disabled={!subjects.length || phase === 'break'}
+            <AnimatePresence>
+              {!running && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="flex flex-wrap items-center justify-center gap-2"
                 >
-                  {!subjects.length ? (
-                    <option value="">No subjects yet</option>
-                  ) : (
-                    subjects.map((subject) => (
-                      <option
-                        key={subject.id}
-                        value={subject.id}
-                        className="bg-slate-900 text-white"
-                      >
-                        {subject.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                  Topic
-                </Label>
-                <select
-                  value={resolvedTopicId}
-                  onChange={(event) => setSelectedTopicId(event.target.value)}
-                  className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white transition outline-none focus:border-violet-400/50"
-                  disabled={!topics.length || phase === 'break'}
-                >
-                  {!topics.length ? (
-                    <option value="">No topics yet</option>
-                  ) : (
-                    topics.map((topic) => (
-                      <option
-                        key={topic.id}
-                        value={topic.id}
-                        className="bg-slate-900 text-white"
-                      >
-                        {topic.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                  Status
-                </Label>
-                <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-slate-200">
-                  {phase === 'break'
-                    ? 'Break'
-                    : currentTopic
-                      ? TOPIC_STATUS_LABEL[currentTopic.status]
-                      : 'No topic selected'}
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-5 flex items-center gap-2 sm:hidden">
-              <Button
-                variant="outline"
-                size="sm"
-                className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
-                  breakLength === 'short'
-                    ? 'border-white/20 bg-white/12 text-white hover:bg-white/12'
-                    : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5'
-                }`}
-                onClick={() => setBreakLength('short')}
-                disabled={running || pendingReview}
-              >
-                Short breaks
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
-                  breakLength === 'long'
-                    ? 'border-white/20 bg-white/12 text-white hover:bg-white/12'
-                    : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5'
-                }`}
-                onClick={() => setBreakLength('long')}
-                disabled={running || pendingReview}
-              >
-                Long breaks
-              </Button>
-            </div>
-
-            <div className="flex flex-col items-center gap-6 py-2 sm:py-4">
-              <div id="tutorial-timer">
-                <PomodoroRing
-                  color={phase === 'focus' ? activeMode.color : '#22c55e'}
-                  finished={finished}
-                  progress={progress}
-                  remaining={timerRemaining}
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Badge className="bg-glass-soft border border-white/10 text-slate-300">
-                  {phase === 'focus'
-                    ? `${activeMode.label} session`
-                    : `${Math.round(breakSeconds[breakLength] / 60)} min ${breakLength} break`}
-                </Badge>
-                <Badge className="bg-violet-500/20 text-violet-200">
-                  +{activeMode.xp} XP focus reward
-                </Badge>
-              </div>
-
-              {!pendingReview ? (
-                <TimerControls
-                  variant="inline"
-                  phase={phase}
-                  running={running}
-                  finished={finished}
-                  timerRemaining={timerRemaining}
-                  totalSeconds={totalSeconds}
-                  activeColor={activeMode.color}
-                  isSessionPending={completeSession.isPending}
-                  hasResolvedTopic={!!resolvedTopicId}
-                  onResetTimer={onResetTimer}
-                  onSkipBreak={onSkipBreak}
-                  onPlayPause={onPlayPause}
-                />
-              ) : (
-                <SessionRatingPanel
-                  variant="inline"
-                  rating={rating}
-                  onRatingChange={setRating}
-                  onSaveSession={onSaveSession}
-                  onDiscard={onResetTimer}
-                  isSaving={completeSession.isPending}
-                />
+                  <Badge className="bg-glass-soft border border-white/10 text-slate-300">
+                    {phase === 'focus'
+                      ? `${activeMode.label} session`
+                      : `${Math.round(breakSeconds[breakLength] / 60)} min ${breakLength} break`}
+                  </Badge>
+                  <Badge className="bg-violet-500/20 text-violet-200">
+                    +{activeMode.xp} XP focus reward
+                  </Badge>
+                </motion.div>
               )}
-            </div>
-          </section>
+            </AnimatePresence>
+
+            {!pendingReview ? (
+              <TimerControls
+                variant="inline"
+                phase={phase}
+                running={running}
+                finished={finished}
+                timerRemaining={timerRemaining}
+                totalSeconds={totalSeconds}
+                activeColor={activeMode.color}
+                isSessionPending={completeSession.isPending}
+                hasResolvedTopic={!!resolvedTopicId}
+                onResetTimer={onResetTimer}
+                onSkipBreak={onSkipBreak}
+                onPlayPause={onPlayPause}
+              />
+            ) : (
+              <SessionRatingPanel
+                variant="inline"
+                rating={rating}
+                onRatingChange={setRating}
+                onSaveSession={onSaveSession}
+                onDiscard={onResetTimer}
+                isSaving={completeSession.isPending}
+              />
+            )}
+          </div>
 
           <section className="bg-glass-subtle flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-xs text-slate-300">
             <span className="inline-flex items-center gap-1.5">

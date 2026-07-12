@@ -37,3 +37,5 @@ export const TIMER_MODES: Record<TimerMode, TimerModeConfig> = {
 export function getTimerModeSeconds(mode: TimerMode, minutesOverride?: number) {
   return (minutesOverride ?? TIMER_MODES[mode].defaultMinutes) * 60
 }
+
+export const BREAK_MODE_COLOR = '#22c55e'
