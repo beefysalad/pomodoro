@@ -76,7 +76,7 @@ export function PomodoroDial({
           width: glowSize,
           height: glowSize,
           filter: `blur(${glowBlur}px)`,
-          backgroundColor: `${color}2a`,
+          backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`,
         }}
         animate={
           finished
@@ -107,7 +107,9 @@ export function PomodoroDial({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - progress)}
-          style={{ filter: `drop-shadow(0 0 18px ${color}a6)` }}
+          style={{
+            filter: `drop-shadow(0 0 18px color-mix(in srgb, ${color} 65%, transparent))`,
+          }}
           transition={{ duration: 0.8, ease: 'linear' }}
         />
       </svg>

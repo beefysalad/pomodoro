@@ -346,7 +346,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="bg-glass-soft rounded-2xl border border-white/5 p-4 backdrop-blur-xl sm:p-6"
+                className="bg-glass-soft rounded-2xl border border-white/10 p-4 backdrop-blur-xl sm:p-6"
               >
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                   <ModeSelector
@@ -509,7 +509,10 @@ export default function DashboardPage() {
           </AnimatePresence>
 
           <div className="flex flex-col items-center gap-8 py-6 sm:py-10">
-            <div id="tutorial-timer">
+            <div
+              id="tutorial-timer"
+              className="flex flex-col items-center gap-4"
+            >
               <PomodoroDial
                 color={phase === 'focus' ? activeMode.color : BREAK_MODE_COLOR}
                 progress={progress}
@@ -518,6 +521,14 @@ export default function DashboardPage() {
                 running={running}
                 size="lg"
               />
+              {running && phase === 'focus' && currentTopic && (
+                <p className="text-xs text-slate-400">
+                  Focusing on:{' '}
+                  <span className="font-semibold text-white">
+                    {currentTopic.name}
+                  </span>
+                </p>
+              )}
             </div>
 
             <AnimatePresence>
