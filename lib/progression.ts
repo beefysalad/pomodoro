@@ -28,7 +28,7 @@ export function getLevelProgress(totalXP: number) {
   }
 }
 
-function getDateKeyInTimeZone(date: Date, timezone: string) {
+export function getDateKeyInTimeZone(date: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
     year: 'numeric',

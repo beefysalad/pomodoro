@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Flame, Maximize2, Timer } from 'lucide-react'
+import { Flame, Maximize2 } from 'lucide-react'
 import { AppHeader } from '@/components/app-header'
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog'
 import { FocusModeOverlay } from '@/components/dashboard/focus-mode-overlay'
@@ -578,20 +578,6 @@ export default function DashboardPage() {
               />
             )}
           </div>
-
-          <section className="bg-glass-subtle flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-xs text-slate-300">
-            <span className="inline-flex items-center gap-1.5">
-              <Timer className="h-3.5 w-3.5 text-cyan-300" />
-              Dashboard is timer-first. Detailed cards are now in Stats.
-            </span>
-            <Link
-              href="/subjects"
-              id="tutorial-subjects"
-              className="text-cyan-300 transition hover:text-cyan-200"
-            >
-              Manage subjects and topics
-            </Link>
-          </section>
         </div>
 
         <FocusModeOverlay
