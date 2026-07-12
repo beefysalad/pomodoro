@@ -33,6 +33,11 @@ export function ActivityHeatmap({ days }: { days: HeatmapDay[] }) {
       ...days,
     ]
 
+    const tailPadding = (7 - (padded.length % 7)) % 7
+    if (tailPadding > 0) {
+      padded.push(...(Array(tailPadding).fill(null) as null[]))
+    }
+
     const built: (HeatmapDay | null)[][] = []
     for (let i = 0; i < padded.length; i += 7) {
       built.push(padded.slice(i, i + 7))

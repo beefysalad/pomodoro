@@ -122,8 +122,14 @@ export function computeTrends(
 export function buildHeatmap(sessions: SessionSlice[], timezone: string, now: Date): HeatmapDay[] {
   const buckets = new Map<string, { seconds: number; sessions: number }>()
 
+  // Anchor bucket generation to noon UTC rather than `now` directly — subtracting
+  // whole days from a timestamp close to local midnight can duplicate or skip a
+  // calendar day across a DST transition. Noon UTC keeps a safe buffer either way.
+  const base = new Date(now)
+  base.setUTCHours(12, 0, 0, 0)
+
   for (let i = HEATMAP_DAYS - 1; i >= 0; i--) {
-    const date = new Date(now.getTime() - i * DAY_MS)
+    const date = new Date(base.getTime() - i * DAY_MS)
     buckets.set(getDateKeyInTimeZone(date, timezone), { seconds: 0, sessions: 0 })
   }
 

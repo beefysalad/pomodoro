@@ -48,11 +48,13 @@ export default function StatsPage() {
     sessions: subject.sessionCount,
   }))
 
-  const shareChart = subjectChart.map((subject, index) => ({
-    ...subject,
-    value: subject.timeMinutes,
-    color: CHART_COLORS[index % CHART_COLORS.length],
-  }))
+  const shareChart = subjectChart
+    .map((subject, index) => ({
+      ...subject,
+      value: subject.timeMinutes,
+      color: CHART_COLORS[index % CHART_COLORS.length],
+    }))
+    .filter((slice) => slice.value > 0)
 
   const avgSessionSeconds =
     stats && stats.totals.sessions
