@@ -27,7 +27,7 @@ export function DeckCard({
   return (
     <div className="group relative">
       <Link href={`/subjects/${subjectId}?view=flashcards&deckId=${deck.id}`}>
-        <Card className="relative h-full overflow-hidden border-white/10 bg-white/[0.05] transition-all hover:border-cyan-500/40 hover:bg-white/[0.08] hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]">
+        <Card className="relative h-full overflow-hidden transition-all hover:border-cyan-500/40 hover:bg-white/[0.08] hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]">
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400 ring-1 ring-violet-500/30">

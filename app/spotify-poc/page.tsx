@@ -70,7 +70,7 @@ export default function SpotifyPocPage() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+          <Card className="py-0 backdrop-blur-xl">
             <CardContent className="space-y-4 px-4 py-5 sm:px-6">
               <h2 className="text-lg font-bold text-white">Connection</h2>
 
@@ -120,7 +120,7 @@ export default function SpotifyPocPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+          <Card className="py-0 backdrop-blur-xl">
             <CardContent className="space-y-4 px-4 py-5 sm:px-6">
               <h2 className="text-lg font-bold text-white">Next step hooks</h2>
               <div className="space-y-2 text-sm text-slate-300">

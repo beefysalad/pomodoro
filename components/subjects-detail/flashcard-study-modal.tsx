@@ -26,7 +26,7 @@ export function FlashcardStudyModal({
   return (
     <div className="rounded-2xl border border-white/10 bg-[#0d1627]/80 p-6">
       {!flashcards.length ? (
-        <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center text-sm text-slate-400">
+        <div className="bg-glass-empty rounded-xl border border-dashed border-white/15 px-4 py-10 text-center text-sm text-slate-400">
           No flashcards available for this topic yet.
         </div>
       ) : (
@@ -53,7 +53,7 @@ export function FlashcardStudyModal({
             </p>
 
             {showAnswer && (
-              <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-5">
+              <div className="bg-glass-soft mt-6 rounded-xl border border-white/10 p-5">
                 <p className="text-xs text-slate-400">Definition</p>
                 <p className="mt-2 text-base text-slate-100">
                   {activeStudyCard?.answer}

@@ -41,7 +41,7 @@ export function SubjectCard({
     : 0
 
   return (
-    <Card className="h-full border-white/10 bg-white/[0.05] py-0 transition hover:border-violet-400/40 hover:bg-white/[0.08]">
+    <Card className="h-full py-0 transition hover:border-violet-400/40 hover:bg-white/[0.08]">
       <CardContent className="space-y-3 px-4 py-5 sm:px-5">
         <div className="flex items-center justify-between gap-2">
           <span

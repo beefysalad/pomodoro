@@ -7,7 +7,7 @@ interface GlobalLeaderboardRowProps {
 
 export function GlobalLeaderboardRow({ entry }: GlobalLeaderboardRowProps) {
   return (
-    <div className="grid grid-cols-[56px_1fr_auto] items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+    <div className="bg-glass-subtle grid grid-cols-[56px_1fr_auto] items-center gap-2 rounded-lg border border-white/10 px-3 py-2.5">
       <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-300">
         <Medal className="h-3.5 w-3.5 text-violet-300" />#{entry.rank}
       </span>

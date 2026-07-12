@@ -70,14 +70,14 @@ export function WizardShell({
               )}
             </AnimatePresence>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 backdrop-blur-xl sm:p-12">
+            <div className="bg-glass-soft rounded-3xl border border-white/10 p-8 backdrop-blur-xl sm:p-12">
               {children}
             </div>
 
             <div className="flex items-center justify-center gap-3">
               <Button
                 variant="outline"
-                className="h-11 rounded-full border-white/15 bg-white/[0.04] px-6 text-slate-300 hover:bg-white/10 hover:text-white"
+                className="bg-glass-soft h-11 rounded-full border-white/15 px-6 text-slate-300 hover:bg-white/10 hover:text-white"
                 onClick={onBack}
                 disabled={backDisabled}
               >

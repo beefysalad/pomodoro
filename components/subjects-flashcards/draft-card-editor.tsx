@@ -22,7 +22,7 @@ export function DraftCardEditor({
   canRemove,
 }: DraftCardEditorProps) {
   return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+    <Card className="py-0 backdrop-blur-xl">
       <CardContent className="space-y-3 px-4 py-5 sm:px-6">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-slate-400">{index + 1}</p>

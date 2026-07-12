@@ -21,7 +21,7 @@ export function SessionRatingPanel({
   return (
     <div
       className={`w-full max-w-xl rounded-xl border border-white/10 p-4 ${
-        variant === 'inline' ? 'bg-white/[0.03]' : 'bg-white/[0.04]'
+        variant === 'inline' ? 'bg-glass-subtle' : 'bg-glass-soft'
       }`}
     >
       <p className="text-center text-sm font-semibold text-white">

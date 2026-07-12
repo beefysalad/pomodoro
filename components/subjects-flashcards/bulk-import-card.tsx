@@ -19,7 +19,7 @@ export function BulkImportCard({
   onImportFromText,
 }: BulkImportCardProps) {
   return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+    <Card className="py-0 backdrop-blur-xl">
       <CardContent className="space-y-3 px-4 py-5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -58,7 +58,7 @@ export function BulkImportCard({
               className="min-h-[120px] w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500"
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
+              <div className="bg-glass-subtle rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-400">
                 Tip: paste many lines. Each line becomes one card.
               </div>
               <Button

@@ -380,7 +380,7 @@ export default function SubjectDetailPage() {
             label="Tracked time"
             value={formatDuration(topicStats.totalSeconds)}
           />
-          <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+          <Card className="py-0 backdrop-blur-xl">
             <CardContent className="px-4 py-4 sm:px-5">
               <p className="text-xs text-slate-400">Completion</p>
               <p className="mt-1 text-2xl font-extrabold text-white">
@@ -395,7 +395,7 @@ export default function SubjectDetailPage() {
         </section>
 
         {!!pageMessage && (
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+          <div className="bg-glass-soft rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
             {pageMessage}
           </div>
         )}
@@ -416,7 +416,7 @@ export default function SubjectDetailPage() {
             className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
             id="tutorial-flashcards"
           >
-            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+            <Card className="py-0 backdrop-blur-xl">
               <CardContent className="space-y-5 px-4 py-5 sm:px-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -449,7 +449,9 @@ export default function SubjectDetailPage() {
                       <div
                         key={deck.id}
                         id={
-                          index === 0 ? 'tutorial-flashcards-deck-first' : undefined
+                          index === 0
+                            ? 'tutorial-flashcards-deck-first'
+                            : undefined
                         }
                         role="button"
                         tabIndex={0}
@@ -471,7 +473,7 @@ export default function SubjectDetailPage() {
                         className={`group relative flex cursor-pointer flex-col items-start rounded-2xl border p-4 text-left transition-all duration-300 focus:ring-2 focus:ring-cyan-500/50 focus:outline-none ${
                           resolvedFlashcardDeckId === deck.id
                             ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.1)]'
-                            : 'border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]'
+                            : 'bg-glass-subtle border-white/10 hover:border-white/25 hover:bg-white/[0.06]'
                         }`}
                       >
                         <div
@@ -537,7 +539,7 @@ export default function SubjectDetailPage() {
                       </div>
                     ))}
                     {decks.length === 0 && (
-                      <div className="col-span-full rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center">
+                      <div className="bg-glass-empty col-span-full rounded-xl border border-dashed border-white/15 p-6 text-center">
                         <p className="text-xs tracking-widest text-slate-500 uppercase">
                           No decks created yet
                         </p>
@@ -547,7 +549,7 @@ export default function SubjectDetailPage() {
                 </div>
 
                 {!flashcards.length ? (
-                  <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-8 text-center text-sm text-slate-400">
+                  <div className="bg-glass-empty rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-slate-400">
                     No flashcards yet. Add your first card in the deck editor.
                   </div>
                 ) : (
@@ -585,7 +587,7 @@ export default function SubjectDetailPage() {
             </Card>
 
             <div className="space-y-6">
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <Card className="py-0 backdrop-blur-xl">
                 <CardContent className="space-y-4 px-4 py-5 sm:px-6">
                   <div>
                     <p className="text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">
@@ -609,7 +611,7 @@ export default function SubjectDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <Card className="py-0 backdrop-blur-xl">
                 <CardContent className="space-y-4 px-4 py-5 sm:px-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -679,7 +681,7 @@ export default function SubjectDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+              <Card className="py-0 backdrop-blur-xl">
                 <CardContent className="space-y-3 px-4 py-5 sm:px-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-bold text-white">
@@ -693,7 +695,7 @@ export default function SubjectDetailPage() {
                     {flashcards.map((card) => (
                       <div
                         key={card.id}
-                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2"
+                        className="bg-glass-soft rounded-lg border border-white/10 px-3 py-2"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -787,7 +789,7 @@ export default function SubjectDetailPage() {
         )}
 
         <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+          <Card className="py-0 backdrop-blur-xl">
             <CardContent className="space-y-2 px-4 py-5 sm:px-5">
               <h2 className="text-base font-bold text-white">Highlight</h2>
               {topicStats.strongest ? (
@@ -807,7 +809,7 @@ export default function SubjectDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-gradient-to-br from-cyan-500/15 to-violet-500/10 py-0 backdrop-blur-xl">
+          <Card className="bg-gradient-to-br from-cyan-500/15 to-violet-500/10 py-0 backdrop-blur-xl">
             <CardContent className="space-y-2 px-4 py-5 sm:px-5">
               <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-100">
                 Workflow tip
@@ -825,7 +827,7 @@ export default function SubjectDetailPage() {
         </section>
 
         <Link href="/dashboard" className="block">
-          <Card className="border-white/10 bg-white/[0.05] py-0 transition hover:border-violet-400/40 hover:bg-white/[0.08]">
+          <Card className="py-0 transition hover:border-violet-400/40 hover:bg-white/[0.08]">
             <CardContent className="flex items-center justify-between px-4 py-4 text-sm font-semibold text-white">
               Jump to focus timer
               <Clock3 className="h-4 w-4" />

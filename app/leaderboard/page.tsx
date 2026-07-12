@@ -36,7 +36,7 @@ export default function LeaderboardPage() {
         </section>
 
         {isLoading || !data ? (
-          <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+          <Card className="py-0 backdrop-blur-xl">
             <CardContent className="px-4 py-6 text-sm text-slate-300">
               Loading leaderboard...
             </CardContent>
@@ -49,7 +49,7 @@ export default function LeaderboardPage() {
             >
               <Card
                 id="tutorial-leaderboard-global-rank"
-                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+                className="py-0 backdrop-blur-xl"
               >
                 <CardContent className="space-y-3 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
@@ -75,7 +75,7 @@ export default function LeaderboardPage() {
 
               <Card
                 id="tutorial-leaderboard-weekly-rank"
-                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+                className="py-0 backdrop-blur-xl"
               >
                 <CardContent className="space-y-3 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
@@ -106,7 +106,7 @@ export default function LeaderboardPage() {
             <section className="grid gap-6 xl:grid-cols-2">
               <Card
                 id="tutorial-leaderboard-global-list"
-                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+                className="py-0 backdrop-blur-xl"
               >
                 <CardContent className="space-y-4 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
@@ -129,7 +129,7 @@ export default function LeaderboardPage() {
 
               <Card
                 id="tutorial-leaderboard-weekly-list"
-                className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
+                className="py-0 backdrop-blur-xl"
               >
                 <CardContent className="space-y-4 px-4 py-5 sm:px-5">
                   <div className="flex items-center justify-between">
