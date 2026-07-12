@@ -102,7 +102,7 @@ export function TimerStep({
         {TIMER_MODES.map((mode) => (
           <span
             key={mode.key}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-200"
+            className="bg-glass-soft inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200"
           >
             <span className="text-base">{mode.emoji}</span>
             {mode.label} · {mode.desc}
@@ -150,7 +150,7 @@ function TimerField({
   error?: string
 }) {
   return (
-    <div className="space-y-2.5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
+    <div className="bg-glass-subtle space-y-2.5 rounded-2xl border border-white/10 px-4 py-4">
       <label className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
         {label}
       </label>

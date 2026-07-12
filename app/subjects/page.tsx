@@ -176,14 +176,14 @@ export default function SubjectsPage() {
           id="tutorial-subject-list"
         >
           {!!pageMessage && (
-            <div className="col-span-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+            <div className="bg-glass-soft col-span-full rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
               {pageMessage}
             </div>
           )}
           {isLoading ? (
             <p className="text-sm text-slate-400">Loading subjects...</p>
           ) : !enrichedSubjects.length ? (
-            <Card className="col-span-full border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+            <Card className="col-span-full py-0 backdrop-blur-xl">
               <CardContent className="px-4 py-6 text-sm text-slate-400">
                 No subjects yet. Add one to get started.
               </CardContent>

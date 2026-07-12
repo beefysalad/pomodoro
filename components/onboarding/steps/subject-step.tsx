@@ -34,13 +34,12 @@ export function SubjectStep({
           Create your first subject
         </h2>
         <p className="mx-auto max-w-2xl text-sm text-slate-400">
-          Subjects are your big buckets. Think Math, Biology, or System
-          Design.
+          Subjects are your big buckets. Think Math, Biology, or System Design.
         </p>
       </div>
 
       <div className="mx-auto w-full max-w-xl space-y-6">
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="bg-glass-soft flex items-center gap-3 rounded-2xl border border-white/10 p-3">
           <Input
             id="subject-name"
             value={newSubjectName}

@@ -81,7 +81,7 @@ export function FlashcardQuizModal({
                 <button
                   key={`${choice}-${idx}`}
                   onClick={() => onSelectTestChoice(choice)}
-                  className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/10"
+                  className="bg-glass-soft rounded-xl border border-white/10 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/10"
                 >
                   <span className="mr-2 text-xs text-slate-400">{idx + 1}</span>
                   {choice}
@@ -110,7 +110,7 @@ export function FlashcardQuizModal({
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="bg-glass-soft rounded-xl border border-white/10 p-4">
           <p className="text-sm text-slate-300">
             Last score: {testScore}/{testItems.length}
           </p>
@@ -125,7 +125,7 @@ export function FlashcardQuizModal({
                   key={item.id}
                   className={`rounded-lg border px-3 py-2 ${
                     isCorrect
-                      ? 'border-white/10 bg-white/[0.02]'
+                      ? 'bg-glass-empty border-white/10'
                       : 'border-rose-500/40 bg-rose-500/5'
                   }`}
                 >

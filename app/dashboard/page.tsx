@@ -369,12 +369,12 @@ export default function DashboardPage() {
           </section>
 
           {!!pageMessage && (
-            <section className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+            <section className="bg-glass-soft rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
               {pageMessage}
             </section>
           )}
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:p-6">
+          <section className="bg-glass-soft rounded-2xl border border-white/10 p-4 backdrop-blur-xl sm:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <ModeSelector
                 modeConfig={modeConfig}
@@ -384,7 +384,7 @@ export default function DashboardPage() {
               />
 
               <div className="flex items-center gap-2">
-                <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1 sm:flex">
+                <div className="bg-glass-subtle hidden items-center gap-1 rounded-xl border border-white/10 p-1 sm:flex">
                   <button
                     className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                       breakLength === 'short'
@@ -531,7 +531,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <Badge className="border border-white/10 bg-white/[0.04] text-slate-300">
+                <Badge className="bg-glass-soft border border-white/10 text-slate-300">
                   {phase === 'focus'
                     ? `${activeMode.label} session`
                     : `${Math.round(breakSeconds[breakLength] / 60)} min ${breakLength} break`}
@@ -569,7 +569,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300">
+          <section className="bg-glass-subtle flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-xs text-slate-300">
             <span className="inline-flex items-center gap-1.5">
               <Timer className="h-3.5 w-3.5 text-cyan-300" />
               Dashboard is timer-first. Detailed cards are now in Stats.

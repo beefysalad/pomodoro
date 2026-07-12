@@ -29,7 +29,7 @@ export function SpotifyConnectionCard({
   onDisconnect: () => void
 }) {
   return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+    <Card className="py-0 backdrop-blur-xl">
       <CardContent className="space-y-4 px-4 py-5 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -56,7 +56,7 @@ export function SpotifyConnectionCard({
           )}
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-300">
+        <div className="bg-glass-subtle rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
           {spotifyState.isLoading ? (
             <span className="inline-flex items-center gap-2 text-slate-400">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -102,7 +102,7 @@ export function SpotifyConnectionCard({
               spotifyState.isDisconnecting ||
               !spotifyState.connected
             }
-            className="border-white/20 bg-white/[0.02] text-slate-200 hover:bg-white/[0.06]"
+            className="bg-glass-empty border-white/20 text-slate-200 hover:bg-white/[0.06]"
           >
             {spotifyState.isDisconnecting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

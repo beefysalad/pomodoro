@@ -23,7 +23,7 @@ export function TimerSettingsForm({
   onSave: () => void
 }) {
   return (
-    <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+    <Card className="py-0 backdrop-blur-xl">
       <CardContent className="space-y-5 px-4 py-5 sm:px-6">
         <div className="grid gap-4 sm:grid-cols-3">
           <SettingField
@@ -66,7 +66,7 @@ export function TimerSettingsForm({
           />
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-300">
+        <div className="bg-glass-subtle rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300">
           <span className="inline-flex items-center gap-1.5 font-semibold text-cyan-200">
             <Timer className="h-3.5 w-3.5" />
             Current preview

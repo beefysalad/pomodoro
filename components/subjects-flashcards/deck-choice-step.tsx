@@ -45,7 +45,7 @@ export function DeckChoiceStep({
 
       <div className="mx-auto grid w-full max-w-4xl gap-6 sm:grid-cols-2">
         {/* Option 1: Existing Deck */}
-        <Card className="flex flex-col border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl transition hover:border-violet-500/50 hover:bg-white/[0.08]">
+        <Card className="flex flex-col p-6 backdrop-blur-xl transition hover:border-violet-500/50 hover:bg-white/[0.08]">
           <div className="mb-6">
             <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-600/20 text-violet-400">
               <Plus className="h-6 w-6" />
@@ -81,7 +81,7 @@ export function DeckChoiceStep({
         </Card>
 
         {/* Option 2: New Deck */}
-        <Card className="flex flex-col border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl transition hover:border-cyan-500/50 hover:bg-white/[0.08]">
+        <Card className="flex flex-col p-6 backdrop-blur-xl transition hover:border-cyan-500/50 hover:bg-white/[0.08]">
           <div className="mb-6">
             <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-600/20 text-cyan-400">
               <Plus className="h-6 w-6" />

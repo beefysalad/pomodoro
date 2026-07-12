@@ -40,7 +40,7 @@ export function TopicStep({
       </div>
 
       <div className="mx-auto w-full max-w-xl space-y-5">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="bg-glass-soft rounded-2xl border border-white/10 p-4">
           <label className="block text-xs tracking-widest text-slate-500 uppercase">
             Subject
           </label>
@@ -66,7 +66,7 @@ export function TopicStep({
           </select>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="bg-glass-soft flex items-center gap-3 rounded-2xl border border-white/10 p-3">
           <Input
             id="topic-name"
             value={newTopicName}

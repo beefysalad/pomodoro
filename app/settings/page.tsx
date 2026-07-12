@@ -48,7 +48,12 @@ export default function SettingsPage() {
       isSubmitting ||
       updateUser.isPending ||
       spotifyState.isDisconnecting,
-    [isLoading, isSubmitting, updateUser.isPending, spotifyState.isDisconnecting]
+    [
+      isLoading,
+      isSubmitting,
+      updateUser.isPending,
+      spotifyState.isDisconnecting,
+    ]
   )
 
   useEffect(() => {
@@ -157,7 +162,7 @@ export default function SettingsPage() {
         </section>
 
         {!!settingsMessage && (
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+          <div className="bg-glass-soft rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
             {settingsMessage}
           </div>
         )}

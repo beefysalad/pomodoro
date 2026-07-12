@@ -12,10 +12,7 @@ export function StatCard({
   value: string
 }) {
   return (
-    <Card
-      id={id}
-      className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl"
-    >
+    <Card id={id} className="py-0 backdrop-blur-xl">
       <CardContent className="flex items-center justify-between px-4 py-4 sm:px-5">
         <div>
           <p className="text-xs text-slate-400">{label}</p>

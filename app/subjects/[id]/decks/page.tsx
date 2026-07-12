@@ -152,7 +152,7 @@ export default function SubjectDecksPage() {
           </div>
 
           {!decksLoading && filteredDecks.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02] py-20 text-center">
+            <div className="bg-glass-empty flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 text-slate-500">
                 <BookOpen className="h-8 w-8" />
               </div>

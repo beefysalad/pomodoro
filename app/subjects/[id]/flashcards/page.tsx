@@ -229,7 +229,7 @@ export default function FlashcardCreatePage() {
               </div>
             </section>
 
-            <Card className="border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+            <Card className="py-0 backdrop-blur-xl">
               <CardContent className="space-y-4 px-4 py-5 sm:px-6">
                 <Input
                   value={title}

@@ -120,7 +120,7 @@ export function TopicBoard({
               await moveTopicToStatus(draggingTopicId, status)
               clearDragState()
             }}
-            className={`min-h-[320px] rounded-2xl border bg-white/[0.04] p-3 transition ${
+            className={`bg-glass-soft min-h-[320px] rounded-2xl border p-3 transition ${
               activeDropStatus === status
                 ? 'border-cyan-300/50 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]'
                 : 'border-white/10'
@@ -140,9 +140,7 @@ export function TopicBoard({
                 const relative = strongest?.totalTime
                   ? Math.max(
                       8,
-                      Math.round(
-                        (topic.totalTime / strongest.totalTime) * 100
-                      )
+                      Math.round((topic.totalTime / strongest.totalTime) * 100)
                     )
                   : 8
 
@@ -224,7 +222,7 @@ export function TopicBoard({
               })}
 
               {byStatus[status].length === 0 && (
-                <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3 py-6 text-center text-xs text-slate-500">
+                <div className="bg-glass-empty rounded-xl border border-dashed border-white/15 px-3 py-6 text-center text-xs text-slate-500">
                   Drop topics here
                 </div>
               )}
