@@ -1,5 +1,6 @@
 import type { UseFormRegisterReturn } from 'react-hook-form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export function SettingField({
   label,
@@ -16,9 +17,9 @@ export function SettingField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-white">
+      <Label className="text-sm font-semibold text-white">
         {label} minutes
-      </label>
+      </Label>
       <Input
         type="number"
         inputMode="numeric"

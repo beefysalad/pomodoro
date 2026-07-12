@@ -78,24 +78,26 @@ export function FlashcardQuizModal({
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {(testItems[testIndex]?.choices ?? []).map((choice, idx) => (
-                <button
+                <Button
                   key={`${choice}-${idx}`}
+                  variant="ghost"
                   onClick={() => onSelectTestChoice(choice)}
-                  className="bg-glass-soft rounded-xl border border-white/10 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/10"
+                  className="bg-glass-soft h-auto justify-start rounded-xl border border-white/10 px-4 py-3 text-left text-sm font-semibold text-slate-100 hover:border-cyan-300/50 hover:bg-cyan-500/10 hover:text-slate-100 dark:hover:bg-cyan-500/10"
                 >
                   <span className="mr-2 text-xs text-slate-400">{idx + 1}</span>
                   {choice}
-                </button>
+                </Button>
               ))}
             </div>
             <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
               <span>Not sure?</span>
-              <button
-                className="text-cyan-300 hover:text-cyan-200"
+              <Button
+                variant="ghost"
+                className="h-auto p-0 text-cyan-300 hover:bg-transparent hover:text-cyan-200 dark:hover:bg-transparent"
                 onClick={() => onSelectTestChoice('')}
               >
                 Skip
-              </button>
+              </Button>
             </div>
           </div>
 

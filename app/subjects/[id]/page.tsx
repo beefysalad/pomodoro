@@ -631,17 +631,19 @@ export default function SubjectDetailPage() {
                     <span>Timer per question</span>
                     <div className="flex items-center gap-2">
                       {[10, 20, 30, 45].map((value) => (
-                        <button
+                        <Button
                           key={`quiz-timer-${value}`}
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setQuizSecondsPerQuestion(value)}
-                          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                          className={`h-auto rounded-full px-3 py-1 text-xs font-semibold hover:text-inherit ${
                             quizSecondsPerQuestion === value
-                              ? 'bg-cyan-500/20 text-cyan-100'
-                              : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                              ? 'bg-cyan-500/20 text-cyan-100 hover:bg-cyan-500/20 dark:hover:bg-cyan-500/20'
+                              : 'bg-white/5 text-slate-300 hover:bg-white/10 dark:hover:bg-white/10'
                           }`}
                         >
                           {value}s
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>

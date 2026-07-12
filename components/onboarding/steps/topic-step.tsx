@@ -1,6 +1,7 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { InlineFeedback } from '@/components/onboarding/inline-feedback'
 
@@ -41,9 +42,9 @@ export function TopicStep({
 
       <div className="mx-auto w-full max-w-xl space-y-5">
         <div className="bg-glass-soft rounded-2xl border border-white/10 p-4">
-          <label className="block text-xs tracking-widest text-slate-500 uppercase">
+          <Label className="block text-xs tracking-widest text-slate-500 uppercase">
             Subject
-          </label>
+          </Label>
           <select
             value={resolvedSubjectId}
             onChange={(e) => onChangeSubject(e.target.value)}

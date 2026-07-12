@@ -192,13 +192,15 @@ export default function FlashcardCreatePage() {
           <>
             <section className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setStep('choice')}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+                  className="h-auto gap-1.5 px-0 text-xs font-semibold text-slate-400 hover:bg-transparent hover:text-slate-200 dark:hover:bg-transparent"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Change deck
-                </button>
+                </Button>
                 <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">
                   {title.trim() ? title : 'Add your cards'}
                 </h1>

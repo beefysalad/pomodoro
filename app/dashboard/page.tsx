@@ -12,6 +12,7 @@ import { SessionRatingPanel } from '@/components/dashboard/session-rating-panel'
 import { TimerControls } from '@/components/dashboard/timer-controls'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import {
   useTimer,
   type TimerMode as Mode,
@@ -385,28 +386,32 @@ export default function DashboardPage() {
 
               <div className="flex items-center gap-2">
                 <div className="bg-glass-subtle hidden items-center gap-1 rounded-xl border border-white/10 p-1 sm:flex">
-                  <button
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
                       breakLength === 'short'
-                        ? 'bg-white/12 text-white'
-                        : 'text-slate-300 hover:bg-white/8'
+                        ? 'bg-white/12 text-white hover:bg-white/12 dark:hover:bg-white/12'
+                        : 'text-slate-300 hover:bg-white/8 dark:hover:bg-white/8'
                     }`}
                     onClick={() => setBreakLength('short')}
                     disabled={running || pendingReview}
                   >
                     Short breaks
-                  </button>
-                  <button
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-auto rounded-lg px-3 py-1.5 text-xs font-semibold hover:text-inherit ${
                       breakLength === 'long'
-                        ? 'bg-white/12 text-white'
-                        : 'text-slate-300 hover:bg-white/8'
+                        ? 'bg-white/12 text-white hover:bg-white/12 dark:hover:bg-white/12'
+                        : 'text-slate-300 hover:bg-white/8 dark:hover:bg-white/8'
                     }`}
                     onClick={() => setBreakLength('long')}
                     disabled={running || pendingReview}
                   >
                     Long breaks
-                  </button>
+                  </Button>
                 </div>
                 <Button
                   variant="outline"
@@ -430,9 +435,9 @@ export default function DashboardPage() {
 
             <div className="mb-5 grid gap-3 md:grid-cols-3">
               <div>
-                <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
                   Subject
-                </label>
+                </Label>
                 <select
                   value={resolvedSubjectId}
                   onChange={(event) => setActiveSubjectId(event.target.value)}
@@ -456,9 +461,9 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
                   Topic
-                </label>
+                </Label>
                 <select
                   value={resolvedTopicId}
                   onChange={(event) => setSelectedTopicId(event.target.value)}
@@ -482,9 +487,9 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <Label className="mb-1 block text-xs font-semibold tracking-wide text-slate-400 uppercase">
                   Status
-                </label>
+                </Label>
                 <div className="flex h-10 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-slate-200">
                   {phase === 'break'
                     ? 'Break'
@@ -496,28 +501,32 @@ export default function DashboardPage() {
             </div>
 
             <div className="mb-5 flex items-center gap-2 sm:hidden">
-              <button
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-auto rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
                   breakLength === 'short'
-                    ? 'border-white/20 bg-white/12 text-white'
-                    : 'border-white/10 bg-white/5 text-slate-300'
+                    ? 'border-white/20 bg-white/12 text-white hover:bg-white/12 dark:border-white/20 dark:bg-white/12 dark:hover:bg-white/12'
+                    : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/5'
                 }`}
                 onClick={() => setBreakLength('short')}
                 disabled={running || pendingReview}
               >
                 Short breaks
-              </button>
-              <button
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-auto rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-none hover:text-inherit ${
                   breakLength === 'long'
-                    ? 'border-white/20 bg-white/12 text-white'
-                    : 'border-white/10 bg-white/5 text-slate-300'
+                    ? 'border-white/20 bg-white/12 text-white hover:bg-white/12 dark:border-white/20 dark:bg-white/12 dark:hover:bg-white/12'
+                    : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/5'
                 }`}
                 onClick={() => setBreakLength('long')}
                 disabled={running || pendingReview}
               >
                 Long breaks
-              </button>
+              </Button>
             </div>
 
             <div className="flex flex-col items-center gap-6 py-2 sm:py-4">
