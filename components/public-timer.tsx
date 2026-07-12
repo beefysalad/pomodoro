@@ -5,6 +5,8 @@ import { Pause, Play, RotateCcw, Zap, Timer, CheckCircle2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useClerk } from '@clerk/nextjs'
 import { formatClock } from '@/lib/format'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Mode = 'blitz' | 'focus' | 'deep'
 
@@ -71,7 +73,6 @@ export function PublicTimer({
     remainingRef.current = remaining
   }, [remaining])
 
-
   useEffect(() => {
     if (!running) return
     const startRemaining = remainingRef.current
@@ -127,7 +128,11 @@ export function PublicTimer({
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (running && 'Notification' in window && Notification.permission === 'default') {
+    if (
+      running &&
+      'Notification' in window &&
+      Notification.permission === 'default'
+    ) {
       void Notification.requestPermission().catch(() => undefined)
     }
   }, [running])
@@ -238,7 +243,11 @@ export function PublicTimer({
                       layoutId="mode-pill"
                       className="absolute inset-0 rounded-xl border"
                       style={{ borderColor: `${cfg.color}40` }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 400,
+                        damping: 30,
+                      }}
                     />
                   )}
                 </motion.button>
@@ -260,19 +269,19 @@ export function PublicTimer({
           >
             <div className="relative flex items-center">
               <Timer className="absolute left-4 h-4 w-4 text-slate-300/70" />
-              <input
+              <Input
                 type="text"
                 placeholder="What are you working on?"
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
                 maxLength={60}
-                className="w-full rounded-xl border border-white/15 bg-white/8 py-3 pr-4 pl-11 text-[14px] text-slate-100 placeholder:text-slate-400/85 backdrop-blur-sm transition-colors focus:border-white/30 focus:ring-0 focus:outline-none"
+                className="h-auto w-full rounded-xl border-white/15 bg-white/8 py-3 pr-4 pl-11 text-[14px] text-slate-100 backdrop-blur-sm placeholder:text-slate-400/85 focus-visible:border-white/30 focus-visible:ring-0"
               />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       <div className="relative flex items-center justify-center">
         {/* Ambient glow */}
         <motion.div
@@ -365,7 +374,10 @@ export function PublicTimer({
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-[800]"
-            style={{ backgroundColor: `${config.color}12`, color: config.color }}
+            style={{
+              backgroundColor: `${config.color}12`,
+              color: config.color,
+            }}
           >
             <Zap className="h-3.5 w-3.5" />+{config.xp} XP on completion ·{' '}
             <span className="font-[500] opacity-70">sign up to track</span>
@@ -376,12 +388,13 @@ export function PublicTimer({
       {!!completionMessage && (
         <div className="max-w-sm rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-center text-[13px] text-slate-200">
           <p>{completionMessage}</p>
-          <button
-            className="mt-2 font-semibold text-cyan-300 transition hover:text-cyan-200"
+          <Button
+            variant="link"
+            className="mt-2 h-auto p-0 font-semibold text-cyan-300 hover:text-cyan-200"
             onClick={() => clerk.openSignUp()}
           >
             Sign up free
-          </button>
+          </Button>
         </div>
       )}
 

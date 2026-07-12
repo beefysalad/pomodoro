@@ -7,6 +7,7 @@ import type {
   UseFormRegisterReturn,
 } from 'react-hook-form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export const timerSchema = z
   .object({
@@ -151,9 +152,9 @@ function TimerField({
 }) {
   return (
     <div className="bg-glass-subtle space-y-2.5 rounded-2xl border border-white/10 px-4 py-4">
-      <label className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
+      <Label className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
         {label}
-      </label>
+      </Label>
       <Input
         type="number"
         inputMode="numeric"

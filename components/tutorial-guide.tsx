@@ -105,12 +105,14 @@ export function TutorialGuide({ onComplete }: TutorialGuideProps) {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-400">
               <div className="text-lg font-bold">{currentIndex + 1}</div>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={onComplete}
-              className="rounded-full p-1 text-slate-500 transition-colors hover:bg-white/5 hover:text-white"
+              className="rounded-full text-slate-500 hover:bg-white/5 hover:text-white"
             >
               <X className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
 
           <h3 className="mb-2 text-xl font-bold text-white">

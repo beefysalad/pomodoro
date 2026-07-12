@@ -1,4 +1,5 @@
 import type { TimerMode as Mode } from '@/app/providers/timer-provider'
+import { Button } from '@/components/ui/button'
 
 interface ModeOption {
   label: string
@@ -27,10 +28,11 @@ export function ModeSelector({
         const active = mode === entryMode
 
         return (
-          <button
+          <Button
             key={entryMode}
+            variant="ghost"
             onClick={() => onChangeMode(entryMode)}
-            className="rounded-xl border px-3 py-2 text-left transition-all"
+            className="h-auto flex-col items-start rounded-xl border px-3 py-2 text-left hover:bg-transparent"
             style={
               active
                 ? {
@@ -51,7 +53,7 @@ export function ModeSelector({
             <p className="text-[11px] text-slate-400">
               {option.subtitle(option.minutes)}
             </p>
-          </button>
+          </Button>
         )
       })}
     </div>
