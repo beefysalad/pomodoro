@@ -82,7 +82,7 @@ export function FlashcardQuizModal({
                   key={`${choice}-${idx}`}
                   variant="ghost"
                   onClick={() => onSelectTestChoice(choice)}
-                  className="bg-glass-soft h-auto justify-start rounded-xl border border-white/10 px-4 py-3 text-left text-sm font-semibold text-slate-100 hover:border-cyan-300/50 hover:bg-cyan-500/10 hover:text-slate-100"
+                  className="bg-glass-soft h-auto justify-start rounded-xl border border-white/10 px-4 py-3 text-left text-sm font-semibold text-slate-100 hover:border-cyan-300/50 hover:bg-cyan-500/10 hover:text-slate-100 dark:hover:bg-cyan-500/10"
                 >
                   <span className="mr-2 text-xs text-slate-400">{idx + 1}</span>
                   {choice}
@@ -92,8 +92,8 @@ export function FlashcardQuizModal({
             <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
               <span>Not sure?</span>
               <Button
-                variant="link"
-                className="h-auto p-0 text-cyan-300 hover:text-cyan-200"
+                variant="ghost"
+                className="h-auto p-0 text-cyan-300 hover:bg-transparent hover:text-cyan-200 dark:hover:bg-transparent"
                 onClick={() => onSelectTestChoice('')}
               >
                 Skip

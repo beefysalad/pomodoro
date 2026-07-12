@@ -32,7 +32,7 @@ export function ModeSelector({
             key={entryMode}
             variant="ghost"
             onClick={() => onChangeMode(entryMode)}
-            className="h-auto flex-col items-start rounded-xl border px-3 py-2 text-left hover:bg-transparent"
+            className="h-auto flex-col items-start rounded-xl border px-3 py-2 text-left hover:bg-transparent dark:hover:bg-transparent"
             style={
               active
                 ? {

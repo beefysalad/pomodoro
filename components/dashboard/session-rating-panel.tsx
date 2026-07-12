@@ -31,12 +31,12 @@ export function SessionRatingPanel({
         {[1, 2, 3].map((score) => (
           <Button
             key={score}
-            variant="outline"
+            variant="ghost"
             onClick={() => onRatingChange(score)}
-            className={`h-auto rounded-lg px-2 py-2 text-sm font-semibold shadow-none ${
+            className={`h-auto rounded-lg border px-2 py-2 text-sm font-semibold shadow-none ${
               rating === score
-                ? 'border-violet-400/70 bg-violet-500/20 text-violet-100 hover:bg-violet-500/20'
-                : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/5'
+                ? 'border-violet-400/70 bg-violet-500/20 text-violet-100 hover:bg-violet-500/20 dark:border-violet-400/70 dark:bg-violet-500/20 dark:hover:bg-violet-500/20'
+                : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/5'
             }`}
           >
             {score === 1 ? 'Hard' : score === 2 ? 'Okay' : 'Great'}

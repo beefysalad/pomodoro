@@ -389,8 +389,8 @@ export function PublicTimer({
         <div className="max-w-sm rounded-xl border border-white/15 bg-white/8 px-4 py-3 text-center text-[13px] text-slate-200">
           <p>{completionMessage}</p>
           <Button
-            variant="link"
-            className="mt-2 h-auto p-0 font-semibold text-cyan-300 hover:text-cyan-200"
+            variant="ghost"
+            className="mt-2 h-auto p-0 font-semibold text-cyan-300 hover:bg-transparent hover:text-cyan-200 dark:hover:bg-transparent"
             onClick={() => clerk.openSignUp()}
           >
             Sign up free
