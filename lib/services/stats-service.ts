@@ -89,6 +89,8 @@ function deltaPct(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 100)
 }
 
+// Note: computeTrends uses a rolling UTC-millisecond window (not timezone-aware calendar days like buildHeatmap).
+// This is intentional for trend indicators — buildHeatmap uses local-timezone buckets for daily heatmap display.
 export function computeTrends(
   sessions: SessionSlice[],
   now: Date
@@ -150,7 +152,7 @@ export interface StatsResponse {
 
 export async function getStats(user: User): Promise<StatsResponse> {
   const now = new Date()
-  const since = new Date(now.getTime() - HEATMAP_DAYS * DAY_MS)
+  const since = new Date(now.getTime() - (HEATMAP_DAYS + 1) * DAY_MS)
 
   const [subjects, sessions] = await Promise.all([
     statsRepository.findSubjectsWithTopics(prisma, user.id),
