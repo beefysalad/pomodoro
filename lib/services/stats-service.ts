@@ -1,5 +1,8 @@
-import { getDateKeyInTimeZone } from '@/lib/progression'
+import prisma from '@/lib/prisma'
+import * as statsRepository from '@/lib/repositories/stats-repository'
+import { getDateKeyInTimeZone, getLevelProgress } from '@/lib/progression'
 import type { SessionSlice, SubjectWithTopics } from '@/lib/repositories/stats-repository'
+import type { User } from '@/app/generated/prisma/client'
 
 const HEATMAP_WEEKS = 12
 const HEATMAP_DAYS = HEATMAP_WEEKS * 7
@@ -131,4 +134,58 @@ export function buildHeatmap(sessions: SessionSlice[], timezone: string, now: Da
   }
 
   return Array.from(buckets.entries()).map(([date, bucket]) => ({ date, ...bucket }))
+}
+
+export interface StatsResponse {
+  totals: { xp: number; level: number; focusSeconds: number; sessions: number }
+  trends: { xp: TrendMetric; focusSeconds: TrendMetric; sessions: TrendMetric }
+  levelProgress: ReturnType<typeof getLevelProgress>
+  streak: { current: number; nextGoal: number }
+  insights: { consistencyScore: number; completionRate: number; concentrationRate: number }
+  subjects: SubjectSummary[]
+  topTopics: ReturnType<typeof getTopTopics>
+  heatmap: { days: HeatmapDay[] }
+  topSubject: SubjectSummary | null
+}
+
+export async function getStats(user: User): Promise<StatsResponse> {
+  const now = new Date()
+  const since = new Date(now.getTime() - HEATMAP_DAYS * DAY_MS)
+
+  const [subjects, sessions] = await Promise.all([
+    statsRepository.findSubjectsWithTopics(prisma, user.id),
+    statsRepository.findRecentSessions(prisma, user.id, since),
+  ])
+
+  const subjectSummaries = summarizeSubjects(subjects).sort(
+    (a, b) => b.totalSeconds - a.totalSeconds
+  )
+  const totalSeconds = subjectSummaries.reduce((sum, subject) => sum + subject.totalSeconds, 0)
+  const totalSessions = subjectSummaries.reduce((sum, subject) => sum + subject.sessionCount, 0)
+  const topicCount = subjectSummaries.reduce((sum, subject) => sum + subject.topicCount, 0)
+  const doneTopics = subjectSummaries.reduce((sum, subject) => sum + subject.doneTopics, 0)
+  const topSubject = subjectSummaries[0] ?? null
+
+  const levelProgress = getLevelProgress(user.totalXP)
+
+  return {
+    totals: {
+      xp: user.totalXP,
+      level: levelProgress.level,
+      focusSeconds: totalSeconds,
+      sessions: totalSessions,
+    },
+    trends: computeTrends(sessions, now),
+    levelProgress,
+    streak: { current: user.streak, nextGoal: computeNextStreakGoal(user.streak) },
+    insights: {
+      consistencyScore: computeConsistencyScore(user.streak, totalSessions),
+      completionRate: computeCompletionRate(topicCount, doneTopics),
+      concentrationRate: computeConcentrationRate(topSubject?.totalSeconds ?? 0, totalSeconds),
+    },
+    subjects: subjectSummaries,
+    topTopics: getTopTopics(subjects),
+    heatmap: { days: buildHeatmap(sessions, user.timezone, now) },
+    topSubject,
+  }
 }

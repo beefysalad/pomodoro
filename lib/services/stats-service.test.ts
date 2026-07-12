@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import prisma from '@/lib/prisma'
+import * as statsRepository from '@/lib/repositories/stats-repository'
 import {
   buildHeatmap,
   computeCompletionRate,
@@ -6,10 +8,19 @@ import {
   computeConsistencyScore,
   computeNextStreakGoal,
   computeTrends,
+  getStats,
   getTopTopics,
   summarizeSubjects,
 } from './stats-service'
 import type { SubjectWithTopics } from '@/lib/repositories/stats-repository'
+import type { User } from '@/app/generated/prisma/client'
+
+vi.mock('@/lib/prisma', () => ({ default: {} }))
+vi.mock('@/lib/repositories/stats-repository')
+
+function fake<T>(partial: Partial<T>): T {
+  return partial as T
+}
 
 describe('computeNextStreakGoal', () => {
   it('targets 3 when streak is below 3', () => {
@@ -164,5 +175,52 @@ describe('buildHeatmap', () => {
     expect(heatmap[heatmap.length - 1]).toEqual({ date: '2026-07-12', seconds: 900, sessions: 2 })
     expect(heatmap[heatmap.length - 2]).toEqual({ date: '2026-07-11', seconds: 900, sessions: 1 })
     expect(heatmap[0]).toEqual({ date: '2026-04-20', seconds: 0, sessions: 0 })
+  })
+})
+
+describe('getStats', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('assembles the full stats payload from repository data', async () => {
+    const subjects: SubjectWithTopics[] = [
+      {
+        id: 'subj_1',
+        name: 'Biology',
+        color: '#7c3aed',
+        icon: null,
+        topics: [{ id: 't1', name: 'Cells', status: 'DONE', totalTime: 600, sessionCount: 2 }],
+      },
+    ]
+    const sessions = [{ createdAt: new Date(), duration: 600, xpEarned: 25 }]
+
+    vi.mocked(statsRepository.findSubjectsWithTopics).mockResolvedValue(subjects)
+    vi.mocked(statsRepository.findRecentSessions).mockResolvedValue(sessions)
+
+    const user = fake<User>({ id: 'user_1', totalXP: 100, streak: 2, timezone: 'UTC' })
+
+    const stats = await getStats(user)
+
+    expect(statsRepository.findSubjectsWithTopics).toHaveBeenCalledWith(prisma, 'user_1')
+    expect(stats.totals).toEqual({ xp: 100, level: 2, focusSeconds: 600, sessions: 2 })
+    expect(stats.subjects).toHaveLength(1)
+    expect(stats.topSubject?.id).toBe('subj_1')
+    expect(stats.streak).toEqual({ current: 2, nextGoal: 3 })
+    expect(stats.heatmap.days).toHaveLength(84)
+  })
+
+  it('returns an empty payload with no subject or session data', async () => {
+    vi.mocked(statsRepository.findSubjectsWithTopics).mockResolvedValue([])
+    vi.mocked(statsRepository.findRecentSessions).mockResolvedValue([])
+
+    const user = fake<User>({ id: 'user_2', totalXP: 0, streak: 0, timezone: 'UTC' })
+
+    const stats = await getStats(user)
+
+    expect(stats.totals).toEqual({ xp: 0, level: 1, focusSeconds: 0, sessions: 0 })
+    expect(stats.subjects).toEqual([])
+    expect(stats.topSubject).toBeNull()
+    expect(stats.insights).toEqual({ consistencyScore: 0, completionRate: 0, concentrationRate: 0 })
   })
 })
