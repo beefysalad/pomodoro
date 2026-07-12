@@ -109,7 +109,7 @@ export function TutorialGuide({ onComplete }: TutorialGuideProps) {
               variant="ghost"
               size="icon-sm"
               onClick={onComplete}
-              className="rounded-full text-slate-500 hover:bg-white/5 hover:text-white"
+              className="rounded-full text-slate-500 hover:bg-white/5 hover:text-white dark:hover:bg-white/5"
             >
               <X className="h-5 w-5" />
             </Button>

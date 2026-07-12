@@ -49,7 +49,7 @@ export default function RootPage() {
                   <SignInButton mode="modal">
                     <Button
                       variant="ghost"
-                      className="text-slate-300 hover:text-white"
+                      className="text-slate-300 hover:bg-transparent hover:text-white dark:hover:bg-transparent"
                     >
                       Sign in
                     </Button>
@@ -127,7 +127,7 @@ export default function RootPage() {
                 <SignInButton mode="modal">
                   <Button
                     variant="outline"
-                    className="border-white/10 bg-transparent text-slate-200 shadow-none hover:border-white/30 hover:bg-transparent hover:text-white"
+                    className="border-white/10 bg-transparent text-slate-200 shadow-none hover:border-white/30 hover:bg-transparent hover:text-white dark:border-white/10 dark:bg-transparent dark:hover:bg-transparent"
                   >
                     Sign in
                   </Button>
