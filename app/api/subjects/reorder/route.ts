@@ -1,7 +1,8 @@
 import { withAuth, AuthContext } from '@/lib/with-auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { DEFAULT_MUTATION_RATE_LIMIT } from '@/lib/rate-limit'
+import { reorderSubjects } from '@/lib/services/subject-service'
 
 const ReorderSchemaApi = z.object({
   updates: z.array(
@@ -14,31 +15,10 @@ const ReorderSchemaApi = z.object({
 
 export const PATCH = withAuth(
   async (req: NextRequest, { user }: AuthContext) => {
-    try {
-      const body = await req.json()
-      const { updates } = ReorderSchemaApi.parse(body)
-
-      await prisma.$transaction(
-        updates.map((update) =>
-          prisma.subject.updateMany({
-            where: {
-              id: update.id,
-              userId: user.id,
-            },
-            data: {
-              position: update.position,
-            },
-          })
-        )
-      )
-
-      return NextResponse.json({ success: true })
-    } catch (error) {
-      console.error('Subject reorder error:', error)
-      return NextResponse.json(
-        { error: 'Internal Server Error' },
-        { status: 500 }
-      )
-    }
-  }
+    const body = await req.json()
+    const { updates } = ReorderSchemaApi.parse(body)
+    await reorderSubjects(user.id, updates)
+    return NextResponse.json({ success: true })
+  },
+  { rateLimit: DEFAULT_MUTATION_RATE_LIMIT }
 )

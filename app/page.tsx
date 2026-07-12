@@ -12,6 +12,7 @@ import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { PublicTimer } from '@/components/public-timer'
+import { Button } from '@/components/ui/button'
 
 export default function RootPage() {
   const [timerRunning, setTimerRunning] = useState(false)
@@ -46,14 +47,17 @@ export default function RootPage() {
               <nav className="flex items-center gap-2">
                 <SignedOut>
                   <SignInButton mode="modal">
-                    <button className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:text-white">
+                    <Button
+                      variant="ghost"
+                      className="text-slate-300 hover:bg-transparent hover:text-white dark:hover:bg-transparent"
+                    >
                       Sign in
-                    </button>
+                    </Button>
                   </SignInButton>
                   <SignUpButton mode="modal">
-                    <button className="rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-violet-500">
+                    <Button className="bg-violet-600 px-3.5 text-white hover:bg-violet-500">
                       Sign up
-                    </button>
+                    </Button>
                   </SignUpButton>
                 </SignedOut>
 
@@ -116,14 +120,17 @@ export default function RootPage() {
             <div className="mt-5 flex items-center justify-center gap-3">
               <SignedOut>
                 <SignUpButton mode="modal">
-                  <button className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500">
+                  <Button className="bg-violet-600 text-white hover:bg-violet-500">
                     Get started
-                  </button>
+                  </Button>
                 </SignUpButton>
                 <SignInButton mode="modal">
-                  <button className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/30 hover:text-white">
+                  <Button
+                    variant="outline"
+                    className="border-white/10 bg-transparent text-slate-200 shadow-none hover:border-white/30 hover:bg-transparent hover:text-white dark:border-white/10 dark:bg-transparent dark:hover:bg-transparent"
+                  >
                     Sign in
-                  </button>
+                  </Button>
                 </SignInButton>
               </SignedOut>
 

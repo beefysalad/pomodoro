@@ -35,6 +35,10 @@ These variables are already configured in `app/globals.css`. Use standard Tailwi
   - `bg-success-bg` (`rgba(16, 185, 129, 0.1)`): Success tag backgrounds.
   - `text-destructive` (`#EF4444`): Delete, errors, streak-at-risk.
   - `text-amber` (`#D97706`): Blitz focus mode timer.
+- **Timer Modes** (see `lib/timer-modes.ts` for the canonical values consumed by both the public and in-app timers):
+  - Blitz — `text-amber` (`#D97706`).
+  - Focus — `text-violet` (`#7C3AED`).
+  - Deep — `#06B6D4` (no named token today; a raw hex used at every call site via `lib/timer-modes.ts`, consider promoting to a CSS variable if a fourth consumer appears).
 
 ---
 
@@ -45,7 +49,7 @@ We use exactly **one** font: `Geist Mono` (`--font-geist-mono`). It handles ever
 ### Font Configurations
 
 - **Hero / Giant Headers**: 56px, weight `900`, tracking `-0.04em`.
-- **Timers**: 52px, weight `800`, tracking `-0.04em`, color `violet-mid`.
+- **Timers**: `font-mono font-black tracking-tight`, color neutral `text-white` (not `violet-mid` — the ring/glow carries the active mode color, so the digits themselves stay maximally legible at the sizes below). Rendered by the shared `components/timer/pomodoro-dial.tsx`, sized via its `size` prop: `md` 64px (compact/idle demo state), `lg` 88px (dashboard inline), `xl` 116px (immersive running state, dashboard focus-mode overlay).
 - **Standard Heading**: 30px, weight `800`, tracking `-0.03em`.
 - **Subheading**: 16px, weight `600`, tracking `-0.01em`.
 - **Body**: 13px, weight `400`, tracking `0`, color `text-sub`.
@@ -94,3 +98,5 @@ We use exactly **one** font: `Geist Mono` (`--font-geist-mono`). It handles ever
 - **DO NOT** use generic fonts like Inter, Roboto, or standard sans. Everything is `font-mono`.
 - **ALWAYS** check `globals.css` variable names before applying arbitrary hex values in utilities. Prefer the semantic variables (e.g., `text-violet-mid` over `text-[#A78BFA]`).
 - The UI is compact and data-dense. Stick to specific fractional or custom padding sizes when building cards (e.g. padding `18px 20px`, smaller font sizes).
+- **DO NOT** hardcode one-off surface/typography values (e.g. `bg-white/[0.04]`, `font-[700]`, `font-[200]`) directly on a page or feature component. If a shadcn/ui primitive already renders that surface (`Card`, `Badge`, `Button`, `Input`, etc.), the styling belongs in that component's own default classes in `components/ui/*.tsx` so a branding/palette change is a single edit instead of a repo-wide hunt. Known offenders to clean up when touched: `components/onboarding/wizard-shell.tsx`'s `bg-white/[0.04]` panel, and the same `border-white/10 bg-white/[0.0{3,4,5}]` card treatment repeated ad hoc across `app/leaderboard/page.tsx`, `app/dashboard/page.tsx`, `app/subjects/page.tsx`, `app/subjects/[id]/page.tsx`, and `app/settings/page.tsx` — these should become a `Card` variant (or a semantic `bg-surface-glass`-style token in `globals.css`), not repeated inline.
+- **ALWAYS** prefer an existing shadcn/ui component (`components/ui/*`) over hand-rolling a new one. Only build a custom component when no shadcn primitive covers the pattern — check `components/ui/` first.

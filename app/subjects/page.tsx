@@ -1,22 +1,12 @@
 'use client'
 
-import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueries } from '@tanstack/react-query'
-import {
-  ArrowRight,
-  BookMarked,
-  Clock3,
-  Flame,
-  Plus,
-  Target,
-  Trash2,
-} from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { AppHeader } from '@/components/app-header'
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -29,6 +19,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { SubjectCard } from '@/components/subjects/subject-card'
 import { useTimer } from '@/app/providers/timer-provider'
 import {
   useCreateSubject,
@@ -36,14 +27,6 @@ import {
   useSubjects,
 } from '@/hooks/use-subjects'
 import { getTopics } from '@/lib/api/topics'
-
-function formatDuration(totalSeconds: number) {
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  if (totalMinutes < 60) return `${totalMinutes}m`
-  const hours = Math.floor(totalMinutes / 60)
-  const mins = totalMinutes % 60
-  return `${hours}h ${mins}m`
-}
 
 export default function SubjectsPage() {
   const router = useRouter()
@@ -193,118 +176,30 @@ export default function SubjectsPage() {
           id="tutorial-subject-list"
         >
           {!!pageMessage && (
-            <div className="col-span-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+            <div className="bg-glass-soft col-span-full rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
               {pageMessage}
             </div>
           )}
           {isLoading ? (
             <p className="text-sm text-slate-400">Loading subjects...</p>
           ) : !enrichedSubjects.length ? (
-            <Card className="col-span-full border-white/10 bg-white/[0.05] py-0 backdrop-blur-xl">
+            <Card className="col-span-full py-0 backdrop-blur-xl">
               <CardContent className="px-4 py-6 text-sm text-slate-400">
                 No subjects yet. Add one to get started.
               </CardContent>
             </Card>
           ) : (
             enrichedSubjects.map((subject, index) => (
-              <Card
+              <SubjectCard
                 key={subject.id}
-                className="h-full border-white/10 bg-white/[0.05] py-0 transition hover:border-violet-400/40 hover:bg-white/[0.08]"
-              >
-                <CardContent className="space-y-3 px-4 py-5 sm:px-5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span
-                      className="inline-flex h-3 w-3 rounded-full"
-                      style={{ backgroundColor: subject.color }}
-                    />
-                    <Badge className="bg-violet-500/20 text-violet-200">
-                      {subject.topicCount} topics
-                    </Badge>
-                  </div>
-
-                  <h3 className="text-lg font-bold text-white">
-                    {subject.name}
-                  </h3>
-
-                  <div className="space-y-1.5 text-sm text-slate-300">
-                    <p className="inline-flex items-center gap-2">
-                      <Clock3 className="h-3.5 w-3.5" />
-                      {formatDuration(subject.totalSeconds)} tracked
-                    </p>
-                    <p className="inline-flex items-center gap-2">
-                      <BookMarked className="h-3.5 w-3.5" />
-                      {subject.totalSessions} sessions
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs text-slate-400">
-                      <span>Completion</span>
-                      <span>
-                        {subject.topicCount
-                          ? Math.round(
-                              (subject.doneTopics / subject.topicCount) * 100
-                            )
-                          : 0}
-                        %
-                      </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-violet-500"
-                        style={{
-                          width: `${subject.topicCount ? Math.round((subject.doneTopics / subject.topicCount) * 100) : 0}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-emerald-200">
-                        <Target className="h-3 w-3" />
-                        {subject.doneTopics} done
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-amber-200">
-                        <Flame className="h-3 w-3" />
-                        {subject.inProgressTopics} active
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      asChild
-                      className="h-9 flex-1 bg-cyan-600 text-white hover:bg-cyan-500"
-                    >
-                      <Link
-                        href={`/subjects/${subject.id}`}
-                        id={index === 0 ? 'tutorial-subject-first' : undefined}
-                      >
-                        Open subject <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-9 border-emerald-400/35 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
-                      onClick={() => onStartPomodoro(subject.id)}
-                      disabled={subject.topicCount === 0}
-                    >
-                      Start
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-9 border-red-400/35 bg-red-500/10 text-red-200 hover:bg-red-500/20"
-                      onClick={() =>
-                        setDeleteSubjectState({
-                          id: subject.id,
-                          name: subject.name,
-                        })
-                      }
-                      disabled={deleteSubject.isPending}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                subject={subject}
+                isFirst={index === 0}
+                isDeletePending={deleteSubject.isPending}
+                onStartPomodoro={onStartPomodoro}
+                onRequestDelete={(id, name) =>
+                  setDeleteSubjectState({ id, name })
+                }
+              />
             ))
           )}
         </section>
