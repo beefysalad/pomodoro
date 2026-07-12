@@ -21,10 +21,45 @@ function formatDayLabel(date: string) {
   })
 }
 
+function formatMonthLabel(date: string) {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    timeZone: 'UTC',
+  })
+}
+
+// Minimum gap (in week-columns) between two month labels so short months
+// (e.g. Feb) never render with an adjacent label overlapping its text.
+const MIN_LABEL_GAP_WEEKS = 2
+
+function getMonthLabels(weeks: (HeatmapDay | null)[][]): (string | null)[] {
+  let lastMonth = -1
+  let lastLabelIndex = -Infinity
+
+  return weeks.map((week, weekIndex) => {
+    const firstDay = week.find((day): day is HeatmapDay => day !== null)
+    if (!firstDay) return null
+
+    const month = new Date(`${firstDay.date}T00:00:00Z`).getUTCMonth()
+    const isNewMonth = month !== lastMonth
+    lastMonth = month
+
+    if (isNewMonth && weekIndex - lastLabelIndex >= MIN_LABEL_GAP_WEEKS) {
+      lastLabelIndex = weekIndex
+      return formatMonthLabel(firstDay.date)
+    }
+    return null
+  })
+}
+
 export function ActivityHeatmap({ days }: { days: HeatmapDay[] }) {
-  const { weeks, max } = useMemo(() => {
+  const { weeks, monthLabels, max } = useMemo(() => {
     const max = days.reduce((acc, day) => Math.max(acc, day.seconds), 0)
-    const empty: { weeks: (HeatmapDay | null)[][]; max: number } = { weeks: [], max }
+    const empty: { weeks: (HeatmapDay | null)[][]; monthLabels: (string | null)[]; max: number } = {
+      weeks: [],
+      monthLabels: [],
+      max,
+    }
     if (!days.length) return empty
 
     const firstWeekday = new Date(`${days[0].date}T00:00:00Z`).getUTCDay()
@@ -43,7 +78,7 @@ export function ActivityHeatmap({ days }: { days: HeatmapDay[] }) {
       built.push(padded.slice(i, i + 7))
     }
 
-    return { weeks: built, max }
+    return { weeks: built, monthLabels: getMonthLabels(built), max }
   }, [days])
 
   if (!days.length) {
@@ -52,22 +87,31 @@ export function ActivityHeatmap({ days }: { days: HeatmapDay[] }) {
 
   return (
     <div>
-      <div className="flex gap-1 overflow-x-auto pb-1">
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex flex-col gap-1">
-            {week.map((day, dayIndex) =>
-              day ? (
-                <div
-                  key={day.date}
-                  title={`${formatDayLabel(day.date)} · ${formatDuration(day.seconds)} · ${day.sessions} session${day.sessions === 1 ? '' : 's'}`}
-                  className={`h-3 w-3 rounded-sm ${intensityClass(day.seconds, max)}`}
-                />
-              ) : (
-                <div key={`pad-${weekIndex}-${dayIndex}`} className="h-3 w-3" />
-              )
-            )}
-          </div>
-        ))}
+      <div className="overflow-x-auto pb-1">
+        <div className="mb-1 flex gap-1">
+          {monthLabels.map((label, weekIndex) => (
+            <div key={weekIndex} className="w-3 shrink-0 text-[10px] text-muted-foreground">
+              {label && <span className="whitespace-nowrap">{label}</span>}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {weeks.map((week, weekIndex) => (
+            <div key={weekIndex} className="flex flex-col gap-1">
+              {week.map((day, dayIndex) =>
+                day ? (
+                  <div
+                    key={day.date}
+                    title={`${formatDayLabel(day.date)} · ${formatDuration(day.seconds)} · ${day.sessions} session${day.sessions === 1 ? '' : 's'}`}
+                    className={`h-3 w-3 rounded-sm ${intensityClass(day.seconds, max)}`}
+                  />
+                ) : (
+                  <div key={`pad-${weekIndex}-${dayIndex}`} className="h-3 w-3" />
+                )
+              )}
+            </div>
+          ))}
+        </div>
       </div>
       <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
         <span>Less</span>
