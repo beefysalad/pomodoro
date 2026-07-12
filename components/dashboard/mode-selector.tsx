@@ -22,7 +22,10 @@ export function ModeSelector({
   onChangeMode,
 }: ModeSelectorProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2" id="tutorial-modes">
+    <div
+      className="flex flex-wrap items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1.5 backdrop-blur-sm"
+      id="tutorial-modes"
+    >
       {(Object.keys(modeConfig) as Mode[]).map((entryMode) => {
         const option = modeConfig[entryMode]
         const active = mode === entryMode
@@ -32,7 +35,7 @@ export function ModeSelector({
             key={entryMode}
             variant="ghost"
             onClick={() => onChangeMode(entryMode)}
-            className="h-auto flex-col items-start rounded-xl border px-3 py-2 text-left hover:bg-transparent"
+            className="h-auto flex-col items-center gap-0.5 rounded-full border px-5 py-2.5 text-center hover:bg-transparent"
             style={
               active
                 ? {
@@ -41,8 +44,8 @@ export function ModeSelector({
                     boxShadow: `0 0 20px ${option.color}30`,
                   }
                 : {
-                    borderColor: 'rgba(255,255,255,0.14)',
-                    background: 'rgba(255,255,255,0.03)',
+                    borderColor: 'transparent',
+                    background: 'transparent',
                   }
             }
             disabled={disabled}
